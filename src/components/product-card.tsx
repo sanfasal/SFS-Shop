@@ -39,11 +39,11 @@ export function ProductCard({
           onOpen(product);
         }
       }}
-      className="group relative cursor-pointer gap-3 overflow-hidden rounded-2xl py-0 ring-1 ring-border transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-foreground/5 hover:ring-foreground/15"
+      className="group relative isolate cursor-pointer gap-3 overflow-hidden rounded-2xl py-0 ring-1 ring-border outline-none transition-[translate,box-shadow] duration-300 ease-out hover:-translate-y-1 hover:shadow-lg hover:shadow-foreground/5 hover:ring-foreground/15 focus-visible:-translate-y-1 focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none motion-reduce:hover:translate-y-0"
     >
       <ProductImage
         product={product}
-        className="aspect-4/3 w-full object-cover transition-[transform,filter] duration-500 ease-out group-hover:scale-105 group-hover:brightness-95"
+        className="aspect-4/3 w-full transform-gpu object-cover transition-[scale,filter] duration-300 ease-out group-hover:scale-105 group-hover:brightness-95 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
       />
 
       <span className="absolute left-3 top-3 rounded-full bg-background/90 px-2.5 py-1 text-xs font-medium text-foreground/80 shadow-sm ring-1 ring-black/5 backdrop-blur-sm">

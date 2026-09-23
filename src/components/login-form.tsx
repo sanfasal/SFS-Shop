@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import axios from "axios";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -69,7 +70,12 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+    <form
+      onSubmit={handleSubmit}
+      noValidate
+      aria-busy={submitting}
+      className="flex flex-col gap-5"
+    >
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="email">Email</Label>
         <Input
@@ -79,6 +85,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          disabled={submitting}
           aria-invalid={Boolean(errors.email)}
           aria-describedby={errors.email ? "email-error" : undefined}
         />
@@ -98,6 +105,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          disabled={submitting}
           aria-invalid={Boolean(errors.password)}
           aria-describedby={errors.password ? "password-error" : undefined}
         />
@@ -108,12 +116,17 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
         )}
       </div>
 
-      {errors.form && (
-        <p className="text-sm text-destructive">{errors.form}</p>
-      )}
+      {errors.form && <p className="text-sm text-destructive">{errors.form}</p>}
 
       <Button type="submit" disabled={submitting} className="w-full">
-        {submitting ? "Signing in..." : "Sign in"}
+        {submitting ? (
+          <>
+            <Loader2 className="size-4 animate-spin" />
+            Signing in...
+          </>
+        ) : (
+          "Sign in"
+        )}
       </Button>
     </form>
   );

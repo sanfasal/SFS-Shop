@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { LoginForm } from "@/components/login-form";
+import { useAuth } from "@/components/auth-provider";
 
 type LoginDialogProps = {
   open: boolean;
@@ -15,8 +16,12 @@ type LoginDialogProps = {
 };
 
 export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
+  const { pending } = useAuth();
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    // Hide the dialog once credentials are accepted so the full-screen
+    // "Signing in..." overlay takes over.
+    <Dialog open={open && pending !== "login"} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>Log in</DialogTitle>

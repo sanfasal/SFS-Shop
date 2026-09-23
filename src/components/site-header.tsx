@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { LogOut, User } from "lucide-react";
+import Link from "next/link";
+import { LogOut, Settings, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -17,7 +18,7 @@ import { LoginDialog } from "@/components/login-dialog";
 import { ModeToggle } from "@/components/mode-toggle";
 
 export function SiteHeader() {
-  const { isAuthenticated, email, logout } = useAuth();
+  const { isAuthenticated, email, logout, pending } = useAuth();
   const [loginOpen, setLoginOpen] = useState(false);
 
   return (
@@ -27,39 +28,43 @@ export function SiteHeader() {
       <div className="flex items-center gap-1">
         <ModeToggle />
         {isAuthenticated ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button variant="ghost" size="icon" aria-label="Account menu" />
-            }
-          >
-            <User className="size-5" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuGroup>
-              <DropdownMenuLabel className="truncate font-normal text-muted-foreground">
-                {email}
-              </DropdownMenuLabel>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={logout}>
-              <LogOut className="size-4" />
-              Log out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : (
-        <>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Log in"
-            onClick={() => setLoginOpen(true)}
-          >
-            <User className="size-5" />
-          </Button>
-          <LoginDialog open={loginOpen} onOpenChange={setLoginOpen} />
-        </>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button variant="ghost" size="icon" aria-label="Account menu" />
+              }
+            >
+              <User className="size-5" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="truncate font-normal text-muted-foreground">
+                  {email}
+                </DropdownMenuLabel>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem render={<Link href="/settings" />}>
+                <Settings className="size-4" />
+                Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={logout} disabled={pending !== null}>
+                <LogOut className="size-4" />
+                Log out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Log in"
+              onClick={() => setLoginOpen(true)}
+            >
+              <User className="size-5" />
+            </Button>
+            <LoginDialog open={loginOpen} onOpenChange={setLoginOpen} />
+          </>
         )}
       </div>
     </header>

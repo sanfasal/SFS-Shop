@@ -3,20 +3,42 @@
 import {
   createContext,
   useContext,
+  useState,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { setAuthToken } from "@/lib/api-client";
 import { login as loginRequest } from "@/lib/auth";
+
+type AuthPending = "login" | "logout" | null;
 
 type AuthContextValue = {
   isAuthenticated: boolean;
   email: string | null;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
+  pending: AuthPending;
+  setEmail: (email: string) => void;
 };
 
 const EMAIL_KEY = "sfs-shop:auth-email";
+// Hold the full-screen loading state briefly after login and during logout
+// (which is local-only; the API has no logout endpoint) to avoid a jarring flash.
+const MIN_TRANSITION_MS = 600;
+
+const PENDING_LABELS = {
+  login: "Signing in...",
+  logout: "Logging out...",
+} as const;
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+const PROTECTED_PATHS = ["/settings"];
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
@@ -45,10 +67,11 @@ function notify() {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const email = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const [pending, setPending] = useState<AuthPending>(null);
+  const router = useRouter();
+  const pathname = usePathname();
 
-  async function login(nextEmail: string, password: string) {
-    const { token } = await loginRequest(nextEmail, password);
-    setAuthToken(token);
+  function setEmail(nextEmail: string) {
     try {
       window.localStorage.setItem(EMAIL_KEY, nextEmail);
     } catch {
@@ -57,21 +80,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     notify();
   }
 
-  function logout() {
-    setAuthToken(null);
+  async function login(nextEmail: string, password: string) {
+    // Credentials are checked first so errors can still show in the login form.
+    const { token } = await loginRequest(nextEmail, password);
+    setPending("login");
     try {
-      window.localStorage.removeItem(EMAIL_KEY);
-    } catch {
-      // ignore unavailable storage
+      await wait(MIN_TRANSITION_MS);
+      setAuthToken(token);
+      setEmail(nextEmail);
+      toast.success("Welcome back!");
+    } finally {
+      setPending(null);
     }
-    notify();
+  }
+
+  async function logout() {
+    if (pending) return;
+    setPending("logout");
+    try {
+      await wait(MIN_TRANSITION_MS);
+      setAuthToken(null);
+      try {
+        window.localStorage.removeItem(EMAIL_KEY);
+      } catch {
+        // ignore unavailable storage
+      }
+      notify();
+      if (PROTECTED_PATHS.some((path) => pathname.startsWith(path))) {
+        router.replace("/");
+      }
+      toast.success("Logged out.");
+    } finally {
+      setPending(null);
+    }
   }
 
   return (
     <AuthContext.Provider
-      value={{ isAuthenticated: Boolean(email), email, login, logout }}
+      value={{
+        isAuthenticated: Boolean(email),
+        email,
+        login,
+        logout,
+        pending,
+        setEmail,
+      }}
     >
       {children}
+      {pending && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm animate-in fade-in-0"
+        >
+          <div className="flex items-center gap-3 rounded-xl bg-card px-5 py-3 text-sm font-medium shadow-lg ring-1 ring-foreground/10">
+            <Loader2 className="size-4 animate-spin" />
+            {PENDING_LABELS[pending]}
+          </div>
+        </div>
+      )}
     </AuthContext.Provider>
   );
 }
