@@ -71,6 +71,16 @@ export async function deleteProduct(id: number): Promise<void> {
   await apiClient.delete("/api/Product/Delete", { params: { id } });
 }
 
+export async function uploadProductImage(file: File): Promise<string> {
+  const body = new FormData();
+  body.append("file", file);
+  // Override the client's JSON default, otherwise axios serializes FormData to JSON.
+  const { data } = await apiClient.post<{ url: string }>("/api/ImageUpload", body, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data.url;
+}
+
 const PLACEHOLDER_COLORS = [
   "#e2e8f0",
   "#fecaca",

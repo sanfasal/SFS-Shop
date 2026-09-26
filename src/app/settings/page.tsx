@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useAuth } from "@/components/auth-provider";
 import { fetchCurrentUser, updateUser, type User } from "@/lib/users";
 
@@ -255,10 +256,9 @@ export default function SettingsPage() {
 
               <div className="flex flex-col gap-1.5 border-t pt-5">
                 <Label htmlFor="password">New password</Label>
-                <Input
+                <PasswordInput
                   id="password"
                   name="password"
-                  type="password"
                   autoComplete="new-password"
                   placeholder="Leave blank to keep current password"
                   value={values.password}
@@ -277,10 +277,9 @@ export default function SettingsPage() {
 
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="confirmPassword">Confirm new password</Label>
-                <Input
+                <PasswordInput
                   id="confirmPassword"
                   name="confirmPassword"
-                  type="password"
                   autoComplete="new-password"
                   value={values.confirmPassword}
                   onChange={(e) => setField("confirmPassword", e.target.value)}

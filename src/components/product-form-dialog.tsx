@@ -91,6 +91,7 @@ function ProductForm({
   );
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -132,6 +133,7 @@ function ProductForm({
       <ImageInput
         value={values.imageUrl}
         onChange={(imageUrl) => setValues((v) => ({ ...v, imageUrl }))}
+        onUploadingChange={setUploadingImage}
       />
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="product-code">Product code</Label>
@@ -207,9 +209,11 @@ function ProductForm({
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
       <DialogFooter>
-        <Button type="submit" disabled={submitting}>
+        <Button type="submit" disabled={submitting || uploadingImage}>
           {submitting
             ? "Saving..."
+            : uploadingImage
+              ? "Uploading image..."
             : product
               ? "Save changes"
               : "Add product"}
