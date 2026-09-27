@@ -1,36 +1,95 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# sfs-shop
 
-## Getting Started
+A shop frontend built with Next.js 16 (App Router), React 19, Tailwind CSS v4 and shadcn/ui (Base UI). One codebase serves two apps:
 
-First, run the development server:
+- **Storefront** (port 3000): public product catalog with search, category filter and product detail pages.
+- **Dashboard** (port 3001): admin area for managing products, categories, users and roles, plus account settings.
+
+All data comes from an external REST API. This repo holds no backend.
+
+## Getting started
+
+Requirements: Node.js 20+ and a running instance of the sfs-shop API.
+
+```bash
+npm install
+```
+
+Create `.env.local` in the project root:
+
+```bash
+# Required: base URL of the backend API
+NEXT_PUBLIC_API_BASE_URL=https://your-api-host
+
+# Optional: cross-links between the two apps (defaults shown)
+NEXT_PUBLIC_WEB_URL=http://localhost:3000
+NEXT_PUBLIC_DASHBOARD_URL=http://localhost:3001
+```
+
+Start both apps:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- Storefront: http://localhost:3000
+- Dashboard: http://localhost:3001 (sign in at `/login`)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Script | What it does |
+| --- | --- |
+| `npm run dev` | Runs the storefront and dashboard dev servers together |
+| `npm run dev:web` | Storefront dev server only (port 3000) |
+| `npm run dev:dashboard` | Dashboard dev server only (port 3001, builds into `.next-dashboard`) |
+| `npm run build` | Production build |
+| `npm run start` | Serves both apps from the production build |
+| `npm run start:web` / `start:dashboard` | Serves one app from the production build |
+| `npm run lint` | Runs ESLint |
 
-## Learn More
+## How the two apps share one codebase
 
-To learn more about Next.js, take a look at the following resources:
+Each server is started with an `APP_TARGET` environment variable (`web` or `dashboard`), and `src/proxy.ts` routes requests based on it:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **`web`**: serves `src/app/(web)`. The `/dashboard` and `/login` routes return 404.
+- **`dashboard`**: serves `src/app/dashboard` at the root of the port, so `/products` maps to `app/dashboard/products`. Old `/dashboard/...` URLs redirect to the short form. `/login` is served as is.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+In development the dashboard server uses its own build folder (`NEXT_DIST_DIR=.next-dashboard`, read in `next.config.ts`), so the two dev servers can run side by side.
 
-## Deploy on Vercel
+## Project structure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+src/
+  app/
+    (web)/              Storefront: catalog (/) and product detail (/products/[id])
+    dashboard/          Admin: overview, products, categories, users, roles, settings
+    login/              Dashboard sign-in page
+    layout.tsx          Root layout (theme, auth, toasts)
+  components/
+    ui/                 shadcn/ui primitives
+    dashboard/          Shared dashboard pieces (tables, pagination, dialogs)
+    dashboard-shell.tsx Dashboard sidebar layout; redirects signed-out users to /login
+    site-header.tsx     Storefront header
+  hooks/                Data-fetching and hydration hooks
+  lib/                  API client and one module per resource
+  proxy.ts              Routes each request to the storefront or dashboard
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Backend API
+
+`src/lib/api-client.ts` creates an axios instance pointed at `NEXT_PUBLIC_API_BASE_URL`. After login, the JWT is stored in `localStorage` and sent as a `Bearer` token on every request.
+
+The app calls these endpoints:
+
+| Resource | Endpoints |
+| --- | --- |
+| Auth | `POST /api/Auth/Login`, `GET /api/Auth/Me` |
+| Products | `GET /api/Product/GetAll` (paged, `search`, `categoryId`), `GET /api/Product/GetById`, `POST /api/Product/Post`, `PUT /api/Product/Update/{id}`, `DELETE /api/Product/Delete` |
+| Images | `POST /api/ImageUpload` |
+| Categories | `GET /api/Category/GetAll`, `POST /api/Category/Post`, `PUT /api/Category/Update/{id}`, `DELETE /api/Category/Delete` |
+| Users | `GET /api/User/GetAll`, `GET /api/User/GetById`, `POST /api/User/Post`, `PUT /api/User/Update/{id}`, `DELETE /api/User/Delete` |
+| Roles | `GET /api/Role/GetAll`, `POST /api/Role/Post`, `PUT /api/Role/Update/{id}`, `DELETE /api/Role/Delete` |
+
+## Notes for contributors
+
+This project uses Next.js 16, which changes some APIs and conventions (for example, `middleware.ts` is now `proxy.ts`). Check the docs bundled in `node_modules/next/dist/docs/` before relying on older Next.js knowledge. See `AGENTS.md`.

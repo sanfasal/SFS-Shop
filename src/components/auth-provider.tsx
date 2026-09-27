@@ -7,7 +7,6 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import { usePathname, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { setAuthToken } from "@/lib/api-client";
@@ -38,8 +37,6 @@ function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const PROTECTED_PATHS = ["/settings"];
-
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 const listeners = new Set<() => void>();
@@ -68,8 +65,6 @@ function notify() {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const email = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const [pending, setPending] = useState<AuthPending>(null);
-  const router = useRouter();
-  const pathname = usePathname();
 
   function setEmail(nextEmail: string) {
     try {
@@ -106,9 +101,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // ignore unavailable storage
       }
       notify();
-      if (PROTECTED_PATHS.some((path) => pathname.startsWith(path))) {
-        router.replace("/");
-      }
       toast.success("Logged out.");
     } finally {
       setPending(null);

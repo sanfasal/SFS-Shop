@@ -1,38 +1,35 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { useAuth } from "@/components/auth-provider";
-import { useProducts } from "@/hooks/use-products";
-import { ProductFormDialog } from "@/components/product-form-dialog";
+import { ConfirmDeleteDialog } from "@/components/dashboard/confirm-delete-dialog";
 import { ProductCard } from "@/components/product-card";
-import type { Product, ProductCreateInput } from "@/lib/products";
+import { ProductFormDialog } from "@/components/product-form-dialog";
+import { useApiData } from "@/hooks/use-api-data";
+import { useProducts } from "@/hooks/use-products";
+import { fetchCategories } from "@/lib/categories";
+import {
+  createProduct,
+  deleteProduct,
+  updateProduct,
+  type Product,
+  type ProductUpdateInput,
+} from "@/lib/products";
 
 // Fetched once per search from the server; category tabs and pagination
-// below are then derived client-side, since GetAll has no category filter
-// and Category/GetAll requires auth we don't have wired up yet.
+// below are then derived client-side from what was loaded.
 const FETCH_SIZE = 100;
-const PAGE_SIZE = 9;
+const PAGE_SIZE = 12;
 const ALL_CATEGORIES = "all";
 
 export function ProductGrid() {
-  const { isAuthenticated } = useAuth();
-  const router = useRouter();
+  // Logged-in admins can manage the catalog right from the shop.
+  const { isAuthenticated: manage } = useAuth();
 
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -48,14 +45,34 @@ export function ProductGrid() {
   }, [searchInput]);
 
   const {
-    products: allProducts,
+    products: fetchedProducts,
     loading,
     error,
     refetch,
-    addProduct,
-    updateProduct,
-    deleteProduct,
   } = useProducts({ page: 1, pageSize: FETCH_SIZE, search });
+
+  // Inactive products are hidden from shoppers but shown to admins so they
+  // can be edited back to active.
+  const allProducts = useMemo(
+    () => (manage ? fetchedProducts : fetchedProducts.filter((product) => product.isActive)),
+    [fetchedProducts, manage]
+  );
+
+  const categoryList = useApiData(fetchCategories, "Couldn't load categories.");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Product | null>(null);
+  const [deleting, setDeleting] = useState<Product | null>(null);
+
+  async function handleSubmit(values: ProductUpdateInput) {
+    if (editing) {
+      await updateProduct(editing.id, values);
+      toast.success("Product updated");
+    } else {
+      await createProduct(values);
+      toast.success("Product added");
+    }
+    await refetch();
+  }
 
   const categories = useMemo(() => {
     const byId = new Map<number, string>();
@@ -75,65 +92,18 @@ export function ProductGrid() {
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
   const products = filteredProducts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const [formOpen, setFormOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<Product | null>(null);
-  const [deleting, setDeleting] = useState(false);
-
-  function openDetail(product: Product) {
-    router.push(`/products/${product.id}`);
-  }
-
-  function openCreateForm() {
-    setEditingProduct(null);
-    setFormOpen(true);
-  }
-
-  function openEditForm(product: Product) {
-    setEditingProduct(product);
-    setFormOpen(true);
-  }
-
-  async function handleSubmit(values: ProductCreateInput) {
-    if (editingProduct) {
-      await updateProduct(editingProduct.id, {
-        ...values,
-        isActive: editingProduct.isActive,
-      });
-      toast.success("Product updated");
-    } else {
-      await addProduct(values);
-      toast.success("Product added");
-    }
-  }
-
-  function requestDelete(product: Product) {
-    setPendingDelete(product);
-    setDeleteOpen(true);
-  }
-
-  async function confirmDelete() {
-    if (!pendingDelete) return;
-    setDeleting(true);
-    try {
-      await deleteProduct(pendingDelete.id);
-      toast.success("Product deleted");
-      setDeleteOpen(false);
-    } catch {
-      toast.error("Couldn't delete the product. Is the API running?");
-    } finally {
-      setDeleting(false);
-    }
-  }
-
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-10">
+    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 sm:py-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">Products</h1>
-        {isAuthenticated && (
-          <Button onClick={openCreateForm}>
-            <Plus className="size-4" />
+        {manage && (
+          <Button
+            onClick={() => {
+              setEditing(null);
+              setFormOpen(true);
+            }}
+          >
+            <Plus />
             Add product
           </Button>
         )}
@@ -175,15 +145,20 @@ export function ProductGrid() {
       ) : products.length === 0 ? (
         <p className="text-muted-foreground">No products found.</p>
       ) : (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
           {products.map((product) => (
             <ProductCard
               key={product.id}
               product={product}
-              isAuthenticated={isAuthenticated}
-              onOpen={openDetail}
-              onEdit={openEditForm}
-              onDelete={requestDelete}
+              onEdit={
+                manage
+                  ? (p) => {
+                      setEditing(p);
+                      setFormOpen(true);
+                    }
+                  : undefined
+              }
+              onDelete={manage ? setDeleting : undefined}
             />
           ))}
         </div>
@@ -215,30 +190,29 @@ export function ProductGrid() {
         </div>
       )}
 
-      <ProductFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        product={editingProduct}
-        onSubmit={handleSubmit}
-      />
-
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete {pendingDelete?.productName}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This can&apos;t be undone. The product will be removed from your
-              catalog.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} disabled={deleting}>
-              {deleting ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {manage && (
+        <>
+          <ProductFormDialog
+            open={formOpen}
+            onOpenChange={setFormOpen}
+            product={editing}
+            categories={categoryList.data ?? []}
+            onSubmit={handleSubmit}
+          />
+          <ConfirmDeleteDialog
+            open={deleting !== null}
+            onOpenChange={(open) => !open && setDeleting(null)}
+            title={`Delete ${deleting?.productName ?? "product"}?`}
+            description="This permanently removes the product from your catalog."
+            successMessage="Product deleted"
+            onConfirm={async () => {
+              if (!deleting) return;
+              await deleteProduct(deleting.id);
+              await refetch();
+            }}
+          />
+        </>
+      )}
     </div>
   );
 }

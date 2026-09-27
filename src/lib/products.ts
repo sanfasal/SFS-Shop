@@ -41,15 +41,28 @@ export async function fetchProducts(params: {
   page: number;
   pageSize: number;
   search?: string;
+  categoryId?: number;
 }): Promise<PagedResult<Product>> {
   const { data } = await apiClient.get<PagedResult<Product>>("/api/Product/GetAll", {
     params: {
       page: params.page,
       pageSize: params.pageSize,
       search: params.search || undefined,
+      categoryId: params.categoryId,
     },
   });
   return data;
+}
+
+// The API caps pageSize at 100, so walk every page for whole-catalog stats.
+export async function fetchAllProducts(): Promise<Product[]> {
+  const first = await fetchProducts({ page: 1, pageSize: 100 });
+  const rest = await Promise.all(
+    Array.from({ length: Math.max(0, first.totalPages - 1) }, (_, i) =>
+      fetchProducts({ page: i + 2, pageSize: 100 })
+    )
+  );
+  return [first, ...rest].flatMap((result) => result.items);
 }
 
 export async function fetchProductById(id: number): Promise<Product> {

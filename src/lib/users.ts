@@ -87,3 +87,24 @@ export async function updateUser(
 ): Promise<void> {
   await apiClient.put(`/api/User/Update/${id}`, input);
 }
+
+export type UserCreateInput = {
+  username: string;
+  password: string;
+  fullName: string | null;
+  email: string;
+  roleId: number;
+};
+
+export async function fetchUsers(): Promise<User[]> {
+  const { data } = await apiClient.get<User[]>("/api/User/GetAll");
+  return data;
+}
+
+export async function createUser(input: UserCreateInput): Promise<void> {
+  await apiClient.post("/api/User/Post", input);
+}
+
+export async function deleteUser(id: number): Promise<void> {
+  await apiClient.delete("/api/User/Delete", { params: { id } });
+}

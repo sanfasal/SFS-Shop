@@ -3,9 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "concurrently -n web,dashboard -c cyan,magenta \"npm:dev:web\" \"npm:dev:dashboard\"",
+    "dev:web": "cross-env APP_TARGET=web next dev -p 3000",
+    "dev:dashboard": "cross-env APP_TARGET=dashboard NEXT_DIST_DIR=.next-dashboard next dev -p 3001",
     "build": "next build",
-    "start": "next start",
+    "start": "concurrently -n web,dashboard -c cyan,magenta \"npm:start:web\" \"npm:start:dashboard\"",
+    "start:web": "cross-env APP_TARGET=web next start -p 3000",
+    "start:dashboard": "cross-env APP_TARGET=dashboard next start -p 3001",
     "lint": "eslint"
   },
   "dependencies": {
@@ -27,6 +31,8 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^10.0.5",
+    "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
     "tailwindcss": "^4",

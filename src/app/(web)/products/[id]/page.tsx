@@ -90,9 +90,7 @@ export default function ProductDetailPage() {
               {currency.format(product.price)}
             </p>
             {isAuthenticated && (
-              <p className="text-sm text-muted-foreground">
-                Qty: {product.quantity}
-              </p>
+              <p className="text-sm text-muted-foreground">Qty: {product.quantity}</p>
             )}
           </div>
         </div>

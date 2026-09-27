@@ -1,15 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import {
-  createProduct,
-  deleteProduct as deleteProductRequest,
-  fetchProducts,
-  updateProduct as updateProductRequest,
-  type Product,
-  type ProductCreateInput,
-  type ProductUpdateInput,
-} from "@/lib/products";
+import { fetchProducts, type Product } from "@/lib/products";
 
 type UseProductsOptions = {
   page: number;
@@ -44,21 +36,6 @@ export function useProducts({ page, pageSize, search }: UseProductsOptions) {
     load();
   }, [load]);
 
-  async function addProduct(input: ProductCreateInput) {
-    await createProduct(input);
-    await load();
-  }
-
-  async function updateProduct(id: number, input: ProductUpdateInput) {
-    await updateProductRequest(id, input);
-    await load();
-  }
-
-  async function deleteProduct(id: number) {
-    await deleteProductRequest(id);
-    await load();
-  }
-
   return {
     products,
     totalCount,
@@ -66,8 +43,5 @@ export function useProducts({ page, pageSize, search }: UseProductsOptions) {
     loading,
     error,
     refetch: load,
-    addProduct,
-    updateProduct,
-    deleteProduct,
   };
 }
