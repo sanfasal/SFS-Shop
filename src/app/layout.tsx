@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Noto_Sans_Khmer } from "next/font/google";
+import {
+  Geist,
+  Geist_Mono,
+  Noto_Sans_Khmer,
+  Great_Vibes,
+} from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth-provider";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -21,6 +26,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// Display face for the "S" brand mark.
+const greatVibes = Great_Vibes({
+  variable: "--font-great-vibes",
+  subsets: ["latin"],
+  weight: "400",
+});
+
 export const metadata: Metadata = {
   title: "sfs-shop",
   description: "Product catalog",
@@ -32,7 +44,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${notoKhmer.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${notoKhmer.variable} ${geistMono.variable} ${greatVibes.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <ThemeProvider

@@ -11,10 +11,11 @@ import {
   LogOut,
   Menu,
   Package,
+  PanelLeftClose,
+  PanelLeftOpen,
   Settings,
   ShieldCheck,
   ShoppingCart,
-  Store,
   User,
   Users,
   X,
@@ -31,6 +32,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/components/auth-provider";
+import { Logo } from "@/components/logo";
 import { ModeToggle } from "@/components/mode-toggle";
 import { useHydrated } from "@/hooks/use-hydrated";
 
@@ -71,6 +73,16 @@ const NAV_SECTIONS = [
 
 const ALL_ITEMS = NAV_SECTIONS.flatMap((section) => section.items);
 
+const COLLAPSED_KEY = "sfs-shop:sidebar-collapsed";
+
+function readCollapsed() {
+  try {
+    return typeof window !== "undefined" && localStorage.getItem(COLLAPSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 function isActive(pathname: string, href: string) {
   // Links are the short addresses the dashboard port serves (see proxy.ts).
   return href === "/" ? pathname === href : pathname === href || pathname.startsWith(href + "/");
@@ -81,7 +93,20 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  // Desktop only; the mobile drawer always shows full labels.
+  const [collapsed, setCollapsed] = useState(readCollapsed);
   const hydrated = useHydrated();
+
+  function toggleCollapsed() {
+    setCollapsed((value) => {
+      try {
+        localStorage.setItem(COLLAPSED_KEY, value ? "0" : "1");
+      } catch {
+        // Storage unavailable (private mode); the toggle still works for this visit.
+      }
+      return !value;
+    });
+  }
 
   // Logged-out visitors (or anyone who just logged out) go to the login page.
   useEffect(() => {
@@ -92,18 +117,16 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 
   const current = ALL_ITEMS.find((item) => isActive(pathname, item.href));
 
-  const sidebar = (
+  const renderSidebar = (compact: boolean) => (
     <div className="flex h-full flex-col">
-      <div className="flex h-16 items-center justify-between gap-2 border-b border-white/10 px-5">
-        <Link
-          href="/"
-          className="flex items-center gap-2 font-semibold tracking-tight"
-          onClick={() => setMobileOpen(false)}
-        >
-          <span className="flex size-7 items-center justify-center rounded-lg bg-white text-[#036c5b] shadow-sm dark:bg-primary dark:text-primary-foreground">
-            <Store className="size-4" />
-          </span>
-          sfs-shop
+      <div
+        className={cn(
+          "flex h-16 items-center gap-2 border-b border-white/10",
+          compact ? "justify-center px-2" : "justify-between px-5"
+        )}
+      >
+        <Link href="/" aria-label="sfs-shop home" onClick={() => setMobileOpen(false)}>
+          <Logo />
         </Link>
         <Button
           variant="ghost"
@@ -116,12 +139,16 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         </Button>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-5 overflow-y-auto p-3">
-        {NAV_SECTIONS.map((section) => (
+      <nav className={cn("flex flex-1 flex-col overflow-y-auto overflow-x-hidden p-3", compact ? "gap-3" : "gap-5")}>
+        {NAV_SECTIONS.map((section, index) => (
           <div key={section.label} className="flex flex-col gap-1">
-            <p className="px-3 pb-1 text-xs font-medium tracking-wide text-white/55 uppercase">
-              {section.label}
-            </p>
+            {compact ? (
+              index > 0 && <div className="mx-2 mb-2 border-t border-white/10" />
+            ) : (
+              <p className="px-3 pb-1 text-xs font-medium tracking-wide text-white/55 uppercase">
+                {section.label}
+              </p>
+            )}
             {section.items.map(({ href, label, icon: Icon }) => {
               const active = isActive(pathname, href);
               return (
@@ -130,15 +157,18 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                   href={href}
                   onClick={() => setMobileOpen(false)}
                   aria-current={active ? "page" : undefined}
+                  aria-label={compact ? label : undefined}
+                  title={compact ? label : undefined}
                   className={cn(
-                    "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
+                    "flex items-center gap-2.5 rounded-lg py-2 text-sm transition-colors",
+                    compact ? "justify-center px-0" : "px-3",
                     active
                       ? "bg-white font-medium text-[#06584c] shadow-sm dark:bg-white/10 dark:text-white dark:shadow-none dark:ring-1 dark:ring-white/10"
                       : "text-white/80 hover:bg-white/10 hover:text-white"
                   )}
                 >
-                  <Icon className="size-4" />
-                  {label}
+                  <Icon className="size-4 shrink-0" />
+                  {!compact && label}
                 </Link>
               );
             })}
@@ -146,11 +176,19 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         ))}
       </nav>
 
-      <div className="flex items-center gap-3 border-t border-white/10 p-4">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/15">
+      <div
+        className={cn(
+          "flex items-center gap-3 border-t border-white/10",
+          compact ? "flex-col p-3" : "p-4"
+        )}
+      >
+        <span
+          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/15"
+          title={compact ? email ?? undefined : undefined}
+        >
           <User className="size-4" />
         </span>
-        <p className="min-w-0 flex-1 truncate text-sm">{email}</p>
+        {!compact && <p className="min-w-0 flex-1 truncate text-sm">{email}</p>}
         <Button
           variant="ghost"
           size="icon-sm"
@@ -168,8 +206,13 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex flex-1">
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 bg-sidebar-gradient text-white lg:block dark:border-r dark:border-white/5">
-        {sidebar}
+      <aside
+        className={cn(
+          "sticky top-0 hidden h-screen shrink-0 bg-sidebar-gradient text-white transition-[width] duration-200 lg:block dark:border-r dark:border-white/5",
+          collapsed ? "w-16" : "w-64"
+        )}
+      >
+        {renderSidebar(collapsed)}
       </aside>
 
       {/* Mobile sidebar */}
@@ -180,7 +223,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             onClick={() => setMobileOpen(false)}
           />
           <aside className="absolute inset-y-0 left-0 w-64 bg-sidebar-gradient text-white shadow-xl animate-in slide-in-from-left">
-            {sidebar}
+            {renderSidebar(false)}
           </aside>
         </div>
       )}
@@ -196,6 +239,17 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               onClick={() => setMobileOpen(true)}
             >
               <Menu />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden lg:inline-flex"
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-pressed={collapsed}
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              onClick={toggleCollapsed}
+            >
+              {collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
             </Button>
             <p className="text-sm text-muted-foreground">
               Dashboard

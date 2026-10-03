@@ -7,10 +7,10 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { setAuthToken } from "@/lib/api-client";
 import { login as loginRequest } from "@/lib/auth";
+import { LogoLoader } from "@/components/logo-loader";
 
 type AuthPending = "login" | "logout" | null;
 
@@ -123,12 +123,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         <div
           role="status"
           aria-live="polite"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm animate-in fade-in-0"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md animate-in fade-in-0"
         >
-          <div className="flex items-center gap-3 rounded-xl bg-card px-5 py-3 text-sm font-medium shadow-lg ring-1 ring-foreground/10">
-            <Loader2 className="size-4 animate-spin" />
-            {PENDING_LABELS[pending]}
-          </div>
+          <LogoLoader label={PENDING_LABELS[pending]} />
         </div>
       )}
     </AuthContext.Provider>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { LayoutDashboard, LogIn, LogOut, Store, User } from "lucide-react";
+import { LayoutDashboard, LogIn, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/components/auth-provider";
 import { LoginDialog } from "@/components/login-dialog";
+import { Logo } from "@/components/logo";
 import { ModeToggle } from "@/components/mode-toggle";
 
 // The admin dashboard runs as a separate server (see package.json dev:dashboard).
@@ -29,9 +30,7 @@ export function SiteHeader() {
       <div className="h-1 bg-brand-gradient" />
       <div className="flex h-16 items-center justify-between px-6">
         <Link href="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-          <span className="flex size-8 items-center justify-center rounded-lg bg-brand-gradient text-white shadow-sm">
-            <Store className="size-4" />
-          </span>
+          <Logo />
           sfs-shop
         </Link>
 

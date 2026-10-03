@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import axios from "axios";
-import { Loader2 } from "lucide-react";
+import { Loader2, Lock, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,6 +30,10 @@ function validate(email: string, password: string): Errors {
 
   return errors;
 }
+
+const iconClass =
+  "pointer-events-none absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2 text-muted-foreground";
+const inputClass = "h-10 pl-9";
 
 type LoginFormProps = {
   onSuccess?: () => void;
@@ -75,21 +79,28 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
       onSubmit={handleSubmit}
       noValidate
       aria-busy={submitting}
-      className="flex flex-col gap-5"
+      className="flex flex-col gap-4"
     >
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          disabled={submitting}
-          aria-invalid={Boolean(errors.email)}
-          aria-describedby={errors.email ? "email-error" : undefined}
-        />
+        <Label htmlFor="email" className="sr-only">
+          Email
+        </Label>
+        <div className="relative">
+          <Mail className={iconClass} aria-hidden />
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            placeholder="Email address"
+            className={inputClass}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={submitting}
+            aria-invalid={Boolean(errors.email)}
+            aria-describedby={errors.email ? "email-error" : undefined}
+          />
+        </div>
         {errors.email && (
           <p id="email-error" className="text-sm text-destructive">
             {errors.email}
@@ -98,17 +109,24 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="password">Password</Label>
-        <PasswordInput
-          id="password"
-          name="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          disabled={submitting}
-          aria-invalid={Boolean(errors.password)}
-          aria-describedby={errors.password ? "password-error" : undefined}
-        />
+        <Label htmlFor="password" className="sr-only">
+          Password
+        </Label>
+        <div className="relative">
+          <Lock className={iconClass} aria-hidden />
+          <PasswordInput
+            id="password"
+            name="password"
+            autoComplete="current-password"
+            placeholder="Password"
+            className={inputClass}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={submitting}
+            aria-invalid={Boolean(errors.password)}
+            aria-describedby={errors.password ? "password-error" : undefined}
+          />
+        </div>
         {errors.password && (
           <p id="password-error" className="text-sm text-destructive">
             {errors.password}
@@ -118,7 +136,11 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
 
       {errors.form && <p className="text-sm text-destructive">{errors.form}</p>}
 
-      <Button type="submit" disabled={submitting} className="w-full">
+      <Button
+        type="submit"
+        disabled={submitting}
+        className="mt-2 h-10 w-full text-sm font-semibold"
+      >
         {submitting ? (
           <>
             <Loader2 className="size-4 animate-spin" />
