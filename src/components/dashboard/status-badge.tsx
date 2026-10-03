@@ -40,3 +40,13 @@ export function StockBadge({ quantity }: { quantity: number }) {
   if (quantity <= LOW_STOCK_THRESHOLD) return <Pill tone="amber">Low · {quantity}</Pill>;
   return <Pill tone="green">{quantity} in stock</Pill>;
 }
+
+const ORDER_TONES: Record<string, keyof typeof TONES> = {
+  pending: "amber",
+  paid: "green",
+  cancelled: "red",
+};
+
+export function OrderStatusBadge({ status }: { status: string }) {
+  return <Pill tone={ORDER_TONES[status.toLowerCase()] ?? "gray"}>{status}</Pill>;
+}

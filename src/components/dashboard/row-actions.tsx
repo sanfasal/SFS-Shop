@@ -1,11 +1,31 @@
 "use client";
 
-import { Pencil, Trash2 } from "lucide-react";
+import { Eye, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export function RowActions({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
+export function RowActions({
+  onView,
+  onEdit,
+  onDelete,
+}: {
+  onView?: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
   return (
     <div className="flex items-center justify-end gap-1">
+      {onView && (
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="View details"
+          title="View details"
+          onClick={onView}
+          className="text-muted-foreground hover:bg-primary/10 hover:text-primary"
+        >
+          <Eye />
+        </Button>
+      )}
       <Button
         variant="ghost"
         size="icon-sm"

@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  Contact,
   ExternalLink,
   FolderTree,
   LayoutDashboard,
@@ -12,6 +13,7 @@ import {
   Package,
   Settings,
   ShieldCheck,
+  ShoppingCart,
   Store,
   User,
   Users,
@@ -45,6 +47,13 @@ const NAV_SECTIONS = [
     items: [
       { href: "/products", label: "Products", icon: Package },
       { href: "/categories", label: "Categories", icon: FolderTree },
+    ],
+  },
+  {
+    label: "Sales",
+    items: [
+      { href: "/orders", label: "Orders", icon: ShoppingCart },
+      { href: "/customers", label: "Customers", icon: Contact },
     ],
   },
   {

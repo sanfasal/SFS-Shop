@@ -3,7 +3,7 @@
 A shop frontend built with Next.js 16 (App Router), React 19, Tailwind CSS v4 and shadcn/ui (Base UI). One codebase serves two apps:
 
 - **Storefront** (port 3000): public product catalog with search, category filter and product detail pages.
-- **Dashboard** (port 3001): admin area for managing products, categories, users and roles, plus account settings.
+- **Dashboard** (port 3001): admin area for managing products, categories, orders, customers, users and roles, plus account settings.
 
 All data comes from an external REST API. This repo holds no backend.
 
@@ -62,7 +62,7 @@ In development the dashboard server uses its own build folder (`NEXT_DIST_DIR=.n
 src/
   app/
     (web)/              Storefront: catalog (/) and product detail (/products/[id])
-    dashboard/          Admin: overview, products, categories, users, roles, settings
+    dashboard/          Admin: overview, products, categories, orders, customers, users, roles, settings
     login/              Dashboard sign-in page
     layout.tsx          Root layout (theme, auth, toasts)
   components/
@@ -86,6 +86,8 @@ The app calls these endpoints:
 | Auth | `POST /api/Auth/Login`, `GET /api/Auth/Me` |
 | Products | `GET /api/Product/GetAll` (paged, `search`, `categoryId`), `GET /api/Product/GetById`, `POST /api/Product/Post`, `PUT /api/Product/Update/{id}`, `DELETE /api/Product/Delete` |
 | Images | `POST /api/ImageUpload` |
+| Orders | `GET /api/Order/GetAll` (paged, `search`, `status`, `customerId`, `fromDate`, `toDate`), `GET /api/Order/GetById`, `POST /api/Order/Post`, `PUT /api/Order/Update/{id}`, `PUT /api/Order/UpdateStatus/{id}`, `DELETE /api/Order/Delete` |
+| Customers | `GET /api/Customer/GetAll` (paged, `search`, `isActive`), `GET /api/Customer/GetById`, `POST /api/Customer/Post`, `PUT /api/Customer/Update/{id}`, `DELETE /api/Customer/Delete` |
 | Categories | `GET /api/Category/GetAll`, `POST /api/Category/Post`, `PUT /api/Category/Update/{id}`, `DELETE /api/Category/Delete` |
 | Users | `GET /api/User/GetAll`, `GET /api/User/GetById`, `POST /api/User/Post`, `PUT /api/User/Update/{id}`, `DELETE /api/User/Delete` |
 | Roles | `GET /api/Role/GetAll`, `POST /api/Role/Post`, `PUT /api/Role/Update/{id}`, `DELETE /api/Role/Delete` |
