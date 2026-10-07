@@ -24,6 +24,7 @@
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+  --color-chart-series: var(--chart-series);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -76,6 +77,8 @@
   --chart-3: #06584c;
   --chart-4: #5fd3b8;
   --chart-5: #b4ebdd;
+  /* Single-series chart marks: brand teal snapped to pass the dataviz checks on white. */
+  --chart-series: #00866d;
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -113,6 +116,8 @@
   --chart-3: #036c5b;
   --chart-4: #5fd3b8;
   --chart-5: #06584c;
+  /* Single-series chart marks, validated against the dark card surface. */
+  --chart-series: #0faa8a;
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: #0fb896;

@@ -1,19 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Plus, Search } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -21,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -30,9 +26,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
 import { ConfirmDeleteDialog } from "@/components/dashboard/confirm-delete-dialog";
 import { CustomerDetailDialog } from "@/components/dashboard/customer-detail-dialog";
+import { CustomerForm } from "@/components/dashboard/customer-form";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { RowActions } from "@/components/dashboard/row-actions";
 import { StatusBadge } from "@/components/dashboard/status-badge";
@@ -43,14 +39,7 @@ import {
   TableLoadingRows,
 } from "@/components/dashboard/table-states";
 import { useApiData } from "@/hooks/use-api-data";
-import { errorMessage } from "@/lib/api-error";
-import {
-  createCustomer,
-  deleteCustomer,
-  fetchCustomers,
-  updateCustomer,
-  type Customer,
-} from "@/lib/customers";
+import { deleteCustomer, fetchCustomers, type Customer } from "@/lib/customers";
 import { formatDate } from "@/lib/format";
 
 const PAGE_SIZE = 10;
@@ -241,97 +230,5 @@ export default function CustomersPage() {
         }}
       />
     </>
-  );
-}
-
-function CustomerForm({
-  customer,
-  onSaved,
-}: {
-  customer: Customer | null;
-  onSaved: () => Promise<void>;
-}) {
-  const [fullName, setFullName] = useState(customer?.fullName ?? "");
-  const [phone, setPhone] = useState(customer?.phone ?? "");
-  const [address, setAddress] = useState(customer?.address ?? "");
-  const [isActive, setIsActive] = useState(customer?.isActive ?? true);
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!fullName.trim()) {
-      setError("Full name is required.");
-      return;
-    }
-    setError(null);
-    setSubmitting(true);
-    try {
-      const input = {
-        fullName: fullName.trim(),
-        phone: phone.trim() || null,
-        address: address.trim() || null,
-      };
-      if (customer) {
-        await updateCustomer(customer.id, { ...input, isActive });
-        toast.success("Customer updated");
-      } else {
-        await createCustomer(input);
-        toast.success("Customer added");
-      }
-      await onSaved();
-    } catch (err) {
-      setError(errorMessage(err, "Couldn't save the customer."));
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="customer-name">Full name</Label>
-        <Input
-          id="customer-name"
-          autoComplete="off"
-          maxLength={150}
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-        />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="customer-phone">Phone</Label>
-        <Input
-          id="customer-phone"
-          type="tel"
-          autoComplete="off"
-          maxLength={30}
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-        />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="customer-address">Address</Label>
-        <Textarea
-          id="customer-address"
-          rows={3}
-          maxLength={500}
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-        />
-      </div>
-      {customer && (
-        <div className="flex items-center justify-between rounded-lg border px-3 py-2.5">
-          <Label htmlFor="customer-active">Active</Label>
-          <Switch id="customer-active" checked={isActive} onCheckedChange={setIsActive} />
-        </div>
-      )}
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      <DialogFooter>
-        <Button type="submit" disabled={submitting}>
-          {submitting ? "Saving..." : customer ? "Save changes" : "Add customer"}
-        </Button>
-      </DialogFooter>
-    </form>
   );
 }

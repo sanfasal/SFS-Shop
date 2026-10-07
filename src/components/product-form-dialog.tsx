@@ -165,7 +165,15 @@ function ProductForm({
         onChange={(imageUrl) => setValues((v) => ({ ...v, imageUrl }))}
         onUploadingChange={setUploadingImage}
       />
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="product-name">Name</Label>
+        <Input
+          id="product-name"
+          value={values.productName}
+          onChange={(e) => setValues((v) => ({ ...v, productName: e.target.value }))}
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="product-code">Product code</Label>
           <Input
@@ -175,43 +183,26 @@ function ProductForm({
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="product-name">Name</Label>
-          <Input
-            id="product-name"
-            value={values.productName}
-            onChange={(e) => setValues((v) => ({ ...v, productName: e.target.value }))}
-          />
+          <Label htmlFor="product-category">Category</Label>
+          <Select
+            items={categoryItems}
+            value={values.categoryId || null}
+            onValueChange={(value) =>
+              setValues((v) => ({ ...v, categoryId: (value as string | null) ?? "" }))
+            }
+          >
+            <SelectTrigger id="product-category" className="w-full">
+              <SelectValue placeholder="Choose a category" />
+            </SelectTrigger>
+            <SelectContent>
+              {categoryItems.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="product-category">Category</Label>
-        <Select
-          items={categoryItems}
-          value={values.categoryId || null}
-          onValueChange={(value) =>
-            setValues((v) => ({ ...v, categoryId: (value as string | null) ?? "" }))
-          }
-        >
-          <SelectTrigger id="product-category" className="w-full">
-            <SelectValue placeholder="Choose a category" />
-          </SelectTrigger>
-          <SelectContent>
-            {categoryItems.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="product-description">Description</Label>
-        <Textarea
-          id="product-description"
-          rows={3}
-          value={values.description}
-          onChange={(e) => setValues((v) => ({ ...v, description: e.target.value }))}
-        />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-1.5">
@@ -250,6 +241,15 @@ function ProductForm({
           />
         </div>
       )}
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="product-description">Description</Label>
+        <Textarea
+          id="product-description"
+          rows={3}
+          value={values.description}
+          onChange={(e) => setValues((v) => ({ ...v, description: e.target.value }))}
+        />
+      </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
       <DialogFooter>
         <Button type="submit" disabled={submitting || uploadingImage}>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { LayoutDashboard, LogIn, LogOut, User } from "lucide-react";
+import { LayoutDashboard, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/components/auth-provider";
+import { LanguageToggle } from "@/components/language-toggle";
 import { LoginDialog } from "@/components/login-dialog";
 import { Logo } from "@/components/logo";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -29,12 +30,12 @@ export function SiteHeader() {
     <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
       <div className="h-1 bg-brand-gradient" />
       <div className="flex h-16 items-center justify-between px-6">
-        <Link href="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+        <Link href="/" aria-label="sfs-shop home" className="flex items-center">
           <Logo />
-          sfs-shop
         </Link>
 
         <div className="flex items-center gap-1">
+          <LanguageToggle />
           <ModeToggle />
           {isAuthenticated ? (
             <DropdownMenu>
@@ -56,7 +57,7 @@ export function SiteHeader() {
                   <LayoutDashboard className="size-4" />
                   Open dashboard
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={logout} disabled={pending !== null}>
+                <DropdownMenuItem onClick={() => logout()} disabled={pending !== null}>
                   <LogOut className="size-4" />
                   Log out
                 </DropdownMenuItem>
@@ -64,9 +65,14 @@ export function SiteHeader() {
             </DropdownMenu>
           ) : (
             <>
-              <Button variant="outline" size="sm" onClick={() => setLoginOpen(true)}>
-                <LogIn />
-                Log in
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Log in"
+                title="Log in"
+                onClick={() => setLoginOpen(true)}
+              >
+                <User className="size-5" />
               </Button>
               <LoginDialog open={loginOpen} onOpenChange={setLoginOpen} />
             </>

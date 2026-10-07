@@ -18,7 +18,8 @@ type AuthContextValue = {
   isAuthenticated: boolean;
   email: string | null;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
+  // `overlay: false` skips the full-screen loader, for pages that play their own exit.
+  logout: (options?: { overlay?: boolean }) => Promise<void>;
   pending: AuthPending;
   setEmail: (email: string) => void;
 };
@@ -65,6 +66,7 @@ function notify() {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const email = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const [pending, setPending] = useState<AuthPending>(null);
+  const [showOverlay, setShowOverlay] = useState(true);
 
   function setEmail(nextEmail: string) {
     try {
@@ -89,8 +91,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  async function logout() {
+  async function logout({ overlay = true }: { overlay?: boolean } = {}) {
     if (pending) return;
+    setShowOverlay(overlay);
     setPending("logout");
     try {
       await wait(MIN_TRANSITION_MS);
@@ -104,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       toast.success("Logged out.");
     } finally {
       setPending(null);
+      setShowOverlay(true);
     }
   }
 
@@ -119,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
-      {pending && (
+      {pending && showOverlay && (
         <div
           role="status"
           aria-live="polite"

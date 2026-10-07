@@ -21,7 +21,12 @@ export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
   return (
     // Hide the dialog once credentials are accepted so the full-screen
     // "Signing in..." overlay takes over.
-    <Dialog open={open && pending !== "login"} onOpenChange={onOpenChange}>
+    // Only the close button or Esc dismisses it, so a stray click can't lose typed credentials.
+    <Dialog
+      open={open && pending !== "login"}
+      onOpenChange={onOpenChange}
+      disablePointerDismissal
+    >
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>Log in</DialogTitle>

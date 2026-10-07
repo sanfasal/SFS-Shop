@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,10 @@ import {
 const FETCH_SIZE = 100;
 const PAGE_SIZE = 12;
 const ALL_CATEGORIES = "all";
+
+// Category filter pills in the brand color; overrides the default segmented tab look.
+const categoryTabClass =
+  "h-8 flex-none rounded-full border-border bg-card px-4 text-foreground/70 shadow-none hover:border-primary/50 hover:text-primary dark:text-muted-foreground dark:hover:text-primary data-active:border-primary data-active:bg-primary data-active:text-primary-foreground data-active:shadow-sm dark:data-active:border-primary dark:data-active:bg-primary dark:data-active:text-primary-foreground";
 
 export function ProductGrid() {
   // Logged-in admins can manage the catalog right from the shop.
@@ -94,44 +98,50 @@ export function ProductGrid() {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 sm:py-10">
+      <h1 className="sr-only">Products</h1>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Products</h1>
-        {manage && (
-          <Button
-            onClick={() => {
-              setEditing(null);
-              setFormOpen(true);
-            }}
-          >
-            <Plus />
-            Add product
-          </Button>
-        )}
-      </div>
-
-      <Tabs
-        value={category}
-        onValueChange={(value) => {
-          setCategory(value as string);
-          setPage(1);
-        }}
-      >
-        <TabsList>
-          <TabsTrigger value={ALL_CATEGORIES}>All</TabsTrigger>
-          {categories.map((c) => (
-            <TabsTrigger key={c.id} value={String(c.id)}>
-              {c.name}
+        <Tabs
+          value={category}
+          onValueChange={(value) => {
+            setCategory(value as string);
+            setPage(1);
+          }}
+        >
+          <TabsList className="h-auto flex-wrap justify-start gap-2 bg-transparent p-0">
+            <TabsTrigger value={ALL_CATEGORIES} className={categoryTabClass}>
+              All
             </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
-
-      <Input
-        placeholder="Search products..."
-        value={searchInput}
-        onChange={(e) => setSearchInput(e.target.value)}
-        className="max-w-sm"
-      />
+            {categories.map((c) => (
+              <TabsTrigger key={c.id} value={String(c.id)} className={categoryTabClass}>
+                {c.name}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <div className="relative flex-1 sm:w-72 sm:flex-none">
+            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search products..."
+              aria-label="Search products"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="h-9 rounded-full pl-9"
+            />
+          </div>
+          {manage && (
+            <Button
+              onClick={() => {
+                setEditing(null);
+                setFormOpen(true);
+              }}
+            >
+              <Plus />
+              Add product
+            </Button>
+          )}
+        </div>
+      </div>
 
       {error ? (
         <div className="flex flex-col items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4">

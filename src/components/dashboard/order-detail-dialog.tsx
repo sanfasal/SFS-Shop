@@ -10,6 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { InvoiceActions } from "@/components/dashboard/invoice-actions";
 import { OrderStatusBadge } from "@/components/dashboard/status-badge";
 import { useApiData } from "@/hooks/use-api-data";
 import { currency, formatDate } from "@/lib/format";
@@ -121,6 +122,10 @@ function OrderDetail({ orderId }: { orderId: number }) {
           <p className="whitespace-pre-wrap">{order.note}</p>
         </div>
       )}
+
+      <div className="flex justify-end border-t pt-4">
+        <InvoiceActions order={order} />
+      </div>
     </div>
   );
 }

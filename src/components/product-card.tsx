@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight, Pencil, Trash2 } from "lucide-react";
 import { ProductImage } from "@/components/product-image";
 import { currency } from "@/lib/format";
+import { useLanguage } from "@/lib/i18n";
 import type { Product } from "@/lib/products";
 
 type ProductCardProps = {
@@ -19,6 +20,7 @@ export function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
   const manage = Boolean(onEdit || onDelete);
   const href = `/products/${product.id}`;
   const outOfStock = product.quantity === 0;
+  const { t } = useLanguage();
 
   return (
     <div className="group relative isolate aspect-3/5 overflow-hidden rounded-2xl bg-muted shadow-sm ring-1 ring-black/5 transition-[translate,box-shadow] duration-300 ease-out hover:-translate-y-1 hover:shadow-xl motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:ring-white/10">
@@ -33,14 +35,14 @@ export function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
       {/* Price tag tucked into the top-left corner: square against the card's
           edges (the card clips it to its own rounded corner), rounded inside. */}
       <span className="pointer-events-none absolute top-0 left-0 rounded-br-2xl bg-red-500 px-3.5 py-1.5 text-sm font-bold text-white shadow-md">
-        តម្លៃ {currency.format(product.price)}
+        {t("price")} {currency.format(product.price)}
       </span>
 
       {/* Status chips under the price tag */}
       <div className="pointer-events-none absolute top-11 left-3 flex flex-col items-start gap-1.5">
         {outOfStock && (
           <span className="rounded-full bg-black/70 px-2.5 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
-            អស់ពីស្តុក
+            {t("outOfStock")}
           </span>
         )}
         {manage && !product.isActive && (
@@ -83,7 +85,7 @@ export function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
         <div className="min-w-0 text-white drop-shadow">
           <p className="line-clamp-2 leading-snug font-semibold">{product.productName}</p>
           <p className="mt-0.5 truncate text-xs text-white/75">
-            Code: {product.productCode}
+            {t("code")}: {product.productCode}
             {manage && <span className="ml-2">· Qty: {product.quantity}</span>}
           </p>
         </div>
@@ -91,7 +93,7 @@ export function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
           href={href}
           className="pointer-events-auto flex h-10 items-center justify-center gap-2 rounded-full bg-primary text-sm font-semibold text-primary-foreground shadow-lg transition-[filter,translate] hover:brightness-110 active:translate-y-px"
         >
-          មើលលម្អិត
+          {t("viewDetails")}
           <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
         </Link>
       </div>

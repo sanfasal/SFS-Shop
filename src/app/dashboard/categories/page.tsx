@@ -44,7 +44,7 @@ import {
 } from "@/lib/categories";
 import { formatDate } from "@/lib/format";
 
-const COLUMNS = 5;
+const COLUMNS = 6;
 
 export default function CategoriesPage() {
   const categories = useApiData(fetchCategories, "Couldn't load categories.");
@@ -95,7 +95,8 @@ export default function CategoriesPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="pl-4">Name</TableHead>
+              <TableHead className="w-12 pl-4">#</TableHead>
+              <TableHead>Name</TableHead>
               <TableHead>Description</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Created</TableHead>
@@ -114,9 +115,10 @@ export default function CategoriesPage() {
             ) : rows.length === 0 ? (
               <TableEmptyRow columns={COLUMNS} message="No categories found." />
             ) : (
-              rows.map((category) => (
+              rows.map((category, index) => (
                 <TableRow key={category.id}>
-                  <TableCell className="pl-4 font-medium">{category.name}</TableCell>
+                  <TableCell className="pl-4 tabular-nums text-muted-foreground">{index + 1}</TableCell>
+                  <TableCell className="font-medium">{category.name}</TableCell>
                   <TableCell className="max-w-sm truncate text-muted-foreground">
                     {category.description || "—"}
                   </TableCell>

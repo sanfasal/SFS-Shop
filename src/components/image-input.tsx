@@ -4,7 +4,6 @@ import { useRef, useState, type ClipboardEvent, type DragEvent } from "react";
 import { isAxiosError } from "axios";
 import { ImageOff, Loader2, Upload, X } from "lucide-react";
 import { cn } from "cn";
-import { Input } from "@/components/ui/input";
 import { uploadProductImage } from "@/lib/products";
 
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
@@ -24,7 +23,6 @@ export function ImageInput({ value, onChange, onUploadingChange }: ImageInputPro
   // Local data-URI preview of a file being uploaded — never sent to the API.
   const [localPreview, setLocalPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [urlDraft, setUrlDraft] = useState("");
 
   const preview = localPreview ?? value;
 
@@ -87,11 +85,6 @@ export function ImageInput({ value, onChange, onUploadingChange }: ImageInputPro
     setPreviewFailed(false);
     onChange(url);
     return true;
-  }
-
-  function commitUrl() {
-    if (!urlDraft.trim()) return;
-    if (applyUrl(urlDraft)) setUrlDraft("");
   }
 
   // Ctrl+V on the drop zone: upload a copied image, or use copied text as a URL.
@@ -212,24 +205,6 @@ export function ImageInput({ value, onChange, onUploadingChange }: ImageInputPro
           <span className="text-xs font-medium underline underline-offset-2">
             Browse files
           </span>
-          <Input
-            type="url"
-            placeholder="or paste an image URL"
-            value={urlDraft}
-            className="mt-2 h-8 max-w-64 bg-background text-center text-xs"
-            // Keep clicks and keys in the field from opening the file picker.
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              e.stopPropagation();
-              if (e.key === "Enter") {
-                e.preventDefault();
-                commitUrl();
-              }
-            }}
-            onPaste={(e) => e.stopPropagation()}
-            onChange={(e) => setUrlDraft(e.target.value)}
-            onBlur={commitUrl}
-          />
         </div>
       )}
 

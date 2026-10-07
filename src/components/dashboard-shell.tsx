@@ -33,8 +33,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/components/auth-provider";
 import { Logo } from "@/components/logo";
+import { LogoLoader } from "@/components/logo-loader";
 import { ModeToggle } from "@/components/mode-toggle";
 import { useHydrated } from "@/hooks/use-hydrated";
+import {
+  clearDashboardEntrance,
+  isDashboardEntrancePending,
+  markLoginDoorsClose,
+} from "@/lib/login-transition";
 
 // The storefront runs as a separate server (see package.json dev:web).
 const SHOP_URL = process.env.NEXT_PUBLIC_WEB_URL || "http://localhost:3000";
@@ -96,6 +102,17 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   // Desktop only; the mobile drawer always shows full labels.
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const hydrated = useHydrated();
+  // Rise from the center right after the login page's doors open.
+  const [entering] = useState(isDashboardEntrancePending);
+  useEffect(() => clearDashboardEntrance(), []);
+  const leaving = pending === "logout";
+
+  // Logout reverses the login transition: sink into the center here, then the
+  // login page closes its doors.
+  function handleLogout() {
+    markLoginDoorsClose();
+    logout({ overlay: false });
+  }
 
   function toggleCollapsed() {
     setCollapsed((value) => {
@@ -194,7 +211,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           size="icon-sm"
           className="text-white hover:bg-white/10 hover:text-white"
           aria-label="Log out"
-          onClick={logout}
+          onClick={handleLogout}
           disabled={pending !== null}
         >
           <LogOut />
@@ -204,103 +221,125 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   );
 
   return (
-    <div className="flex flex-1">
-      {/* Desktop sidebar */}
-      <aside
-        className={cn(
-          "sticky top-0 hidden h-screen shrink-0 bg-sidebar-gradient text-white transition-[width] duration-200 lg:block dark:border-r dark:border-white/5",
-          collapsed ? "w-16" : "w-64"
-        )}
-      >
-        {renderSidebar(collapsed)}
-      </aside>
-
-      {/* Mobile sidebar */}
-      {mobileOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden">
-          <div
-            className="absolute inset-0 bg-black/40 animate-in fade-in-0"
-            onClick={() => setMobileOpen(false)}
-          />
-          <aside className="absolute inset-y-0 left-0 w-64 bg-sidebar-gradient text-white shadow-xl animate-in slide-in-from-left">
-            {renderSidebar(false)}
-          </aside>
+    <>
+      {leaving && (
+        // Shown while the dashboard sinks away; the login page takes it over.
+        <div
+          role="status"
+          aria-live="polite"
+          className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center animate-in fade-in-0 duration-300"
+        >
+          <LogoLoader label="Logging out..." />
         </div>
       )}
+      <div
+        className={cn(
+          "flex flex-1",
+          entering &&
+            !leaving &&
+            "origin-center animate-in fade-in-0 zoom-in-90 slide-in-from-bottom-8 duration-700 ease-out motion-reduce:animate-none",
+          // Finishes inside the logout's hold time (MIN_TRANSITION_MS in auth-provider).
+          leaving &&
+            "pointer-events-none origin-center animate-out fade-out-0 zoom-out-90 slide-out-to-bottom-8 fill-mode-forwards duration-500 ease-in motion-reduce:animate-none"
+        )}
+      >
+        {/* Desktop sidebar */}
+        <aside
+          className={cn(
+            "sticky top-0 hidden h-screen shrink-0 bg-sidebar-gradient text-white transition-[width] duration-200 lg:block dark:border-r dark:border-white/5",
+            collapsed ? "w-16" : "w-64"
+          )}
+        >
+          {renderSidebar(collapsed)}
+        </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-3 border-b bg-background/95 px-4 backdrop-blur sm:px-6">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="lg:hidden"
-              aria-label="Open menu"
-              onClick={() => setMobileOpen(true)}
-            >
-              <Menu />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="hidden lg:inline-flex"
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              aria-pressed={collapsed}
-              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              onClick={toggleCollapsed}
-            >
-              {collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
-            </Button>
-            <p className="text-sm text-muted-foreground">
-              Dashboard
-              {current && current.href !== "/" && (
-                <>
-                  {" / "}
-                  <span className="font-medium text-foreground">{current.label}</span>
-                </>
-              )}
-            </p>
+        {/* Mobile sidebar */}
+        {mobileOpen && (
+          <div className="fixed inset-0 z-40 lg:hidden">
+            <div
+              className="absolute inset-0 bg-black/40 animate-in fade-in-0"
+              onClick={() => setMobileOpen(false)}
+            />
+            <aside className="absolute inset-y-0 left-0 w-64 bg-sidebar-gradient text-white shadow-xl animate-in slide-in-from-left">
+              {renderSidebar(false)}
+            </aside>
           </div>
+        )}
 
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              nativeButton={false}
-              render={<a href={SHOP_URL} target="_blank" rel="noreferrer" />}
-            >
-              <ExternalLink />
-              <span className="hidden sm:inline">View shop</span>
-            </Button>
-            <ModeToggle />
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={<Button variant="ghost" size="icon" aria-label="Account menu" />}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-3 border-b bg-background/95 px-4 backdrop-blur sm:px-6">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden"
+                aria-label="Open menu"
+                onClick={() => setMobileOpen(true)}
               >
-                <User className="size-5" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel className="truncate font-normal text-muted-foreground">
-                    {email}
-                  </DropdownMenuLabel>
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem render={<Link href="/settings" />}>
-                  <Settings className="size-4" />
-                  Settings
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={logout} disabled={pending !== null}>
-                  <LogOut className="size-4" />
-                  Log out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </header>
+                <Menu />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="hidden lg:inline-flex"
+                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                aria-pressed={collapsed}
+                title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                onClick={toggleCollapsed}
+              >
+                {collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
+              </Button>
+              <p className="text-sm text-muted-foreground">
+                Dashboard
+                {current && current.href !== "/" && (
+                  <>
+                    {" / "}
+                    <span className="font-medium text-foreground">{current.label}</span>
+                  </>
+                )}
+              </p>
+            </div>
 
-        <main className="flex flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8">{children}</main>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                nativeButton={false}
+                render={<a href={SHOP_URL} target="_blank" rel="noreferrer" />}
+              >
+                <ExternalLink />
+                <span className="hidden sm:inline">View shop</span>
+              </Button>
+              <ModeToggle />
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={<Button variant="ghost" size="icon" aria-label="Account menu" />}
+                >
+                  <User className="size-5" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuGroup>
+                    <DropdownMenuLabel className="truncate font-normal text-muted-foreground">
+                      {email}
+                    </DropdownMenuLabel>
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem render={<Link href="/settings" />}>
+                    <Settings className="size-4" />
+                    Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout} disabled={pending !== null}>
+                    <LogOut className="size-4" />
+                    Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </header>
+
+          <main className="flex flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8">{children}</main>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

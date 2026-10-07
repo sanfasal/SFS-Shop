@@ -58,6 +58,17 @@ export async function fetchOrders(params: {
   return data;
 }
 
+// The API caps pageSize at 100, so walk every page (used for dashboard charts).
+export async function fetchAllOrders(): Promise<Order[]> {
+  const first = await fetchOrders({ page: 1, pageSize: 100 });
+  const rest = await Promise.all(
+    Array.from({ length: Math.max(0, first.totalPages - 1) }, (_, i) =>
+      fetchOrders({ page: i + 2, pageSize: 100 })
+    )
+  );
+  return [first, ...rest].flatMap((result) => result.items);
+}
+
 export async function fetchOrderById(id: number): Promise<Order> {
   const { data } = await apiClient.get<Order>("/api/Order/GetById", {
     params: { id },

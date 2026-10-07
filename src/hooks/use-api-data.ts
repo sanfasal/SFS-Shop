@@ -10,13 +10,17 @@ export function useApiData<T>(load: () => Promise<T>, fallbackError: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const reload = useCallback(async () => {
+  // Resolves with the fresh data (null on failure) for callers that need it right away.
+  const reload = useCallback(async (): Promise<T | null> => {
     setLoading(true);
     setError(null);
     try {
-      setData(await load());
+      const value = await load();
+      setData(value);
+      return value;
     } catch (err) {
       setError(errorMessage(err, fallbackError));
+      return null;
     } finally {
       setLoading(false);
     }
