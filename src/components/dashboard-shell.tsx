@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/components/auth-provider";
 import { AccountLabel } from "@/components/account-label";
+import { ConfirmLogoutDialog } from "@/components/confirm-logout-dialog";
 import { Logo } from "@/components/logo";
 import { LogoLoader } from "@/components/logo-loader";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -101,6 +102,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
   // Desktop only; the mobile drawer always shows full labels.
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const hydrated = useHydrated();
@@ -336,12 +338,17 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                     <Settings className="size-4" />
                     Settings
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleLogout} disabled={pending !== null}>
+                  <DropdownMenuItem onClick={() => setLogoutOpen(true)} disabled={pending !== null}>
                     <LogOut className="size-4" />
                     Log out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              <ConfirmLogoutDialog
+                open={logoutOpen}
+                onOpenChange={setLogoutOpen}
+                onConfirm={handleLogout}
+              />
             </div>
           </header>
 

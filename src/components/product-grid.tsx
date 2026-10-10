@@ -31,8 +31,10 @@ const ALL_CATEGORIES = "all";
 
 // Category tabs: round thumbnail on top, name underneath. The active tab's
 // colors are marked important so the base tab styles and hover can't override them.
+// The base underline (::after) sits 5px below the tab and would make the
+// scrollable list overflow vertically, so it's hidden here.
 const categoryTabClass =
-  "group/cat h-auto w-20 flex-none flex-col items-center justify-start gap-2 rounded-xl border-0 bg-transparent px-1 py-1 text-xs font-medium whitespace-normal text-foreground/70 shadow-none hover:text-primary dark:text-muted-foreground dark:hover:text-primary data-active:border-transparent! data-active:bg-transparent! data-active:font-semibold data-active:text-primary! data-active:shadow-none!";
+  "group/cat h-auto after:hidden w-20 flex-none flex-col items-center justify-start gap-2 rounded-xl border-0 bg-transparent px-1 py-1 text-xs font-medium whitespace-normal text-foreground/70 shadow-none hover:text-primary dark:text-muted-foreground dark:hover:text-primary data-active:border-transparent! data-active:bg-transparent! data-active:font-semibold data-active:text-primary! data-active:shadow-none!";
 
 const categoryThumbClass =
   "flex size-16 items-center justify-center overflow-hidden rounded-full bg-muted ring-2 ring-transparent ring-offset-2 ring-offset-background transition-shadow group-hover/cat:ring-primary/40 group-data-active/cat:ring-primary";
@@ -118,8 +120,9 @@ export function ProductGrid() {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 sm:py-10">
       <h1 className="sr-only">Products</h1>
-      <div className="flex flex-col gap-4">
-        <div className="flex w-full items-center gap-2 sm:justify-end">
+      {/* Stacked on small screens; on wide screens categories sit left of the toolbar. */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex w-full items-center gap-2 sm:justify-end lg:w-auto lg:flex-none">
           <div className="relative flex-1 sm:w-72 sm:flex-none">
             <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -149,7 +152,7 @@ export function ProductGrid() {
           )}
         </div>
         <Tabs
-          className="min-w-0"
+          className="min-w-0 lg:order-first lg:flex-1"
           value={category}
           onValueChange={(value) => {
             setCategory(value as string);

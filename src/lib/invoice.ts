@@ -3,9 +3,10 @@ import { currency, formatDate } from "@/lib/format";
 import { fetchOrderById, orderLabel, type Order } from "@/lib/orders";
 
 const SHOP_NAME = "sfs-shop";
+const LOGO_PATH = "/logo.png";
 
 const FONTS_URL =
-  "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Noto+Sans+Khmer:wght@400;500;600;700&family=Great+Vibes&display=swap";
+  "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Noto+Sans+Khmer:wght@400;500;600;700&display=swap";
 
 function escapeHtml(value: string) {
   return value
@@ -29,6 +30,8 @@ export function buildInvoiceHtml(order: Order, customer: Customer | null) {
   const total = order.totalAmount ?? Math.max(0, subTotal - order.discountAmount);
   // Customers may have no name (only phone is required); the Name line is then left out.
   const customerName = customer?.fullName || order.customerName;
+  // Absolute, since the invoice is loaded as an iframe srcdoc.
+  const logoUrl = `${typeof window === "undefined" ? "" : window.location.origin}${LOGO_PATH}`;
 
   const rows = items.length
     ? items
@@ -72,22 +75,24 @@ export function buildInvoiceHtml(order: Order, customer: Customer | null) {
   @page { size: A4; margin: 16mm; }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: #fff; color: #111827; }
+  /* At least one full sheet (A4 minus the @page margins, less 1mm so rounding
+     can't spill onto a blank second page), so the watermark centres on it. */
   body {
+    position: relative; min-height: 264mm;
     font: 13px/1.5 "Geist", "Noto Sans Khmer", system-ui, sans-serif;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
+  body > :not(.watermark) { position: relative; }
+  .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 320px; opacity: 0.07; pointer-events: none; }
   .muted { color: #6b7280; }
   .strong { font-weight: 600; }
   .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   header { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px;
     padding-bottom: 20px; border-bottom: 3px solid #036c5b; }
   .brand { display: flex; align-items: center; gap: 12px; }
-  .mark { display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    width: 44px; height: 44px; border-radius: 12px; color: #fff; font: 34px/1 "Great Vibes", cursive;
-    background: linear-gradient(90deg, #06584c 0%, #036c5b 50%, #06a98c 100%); }
-  /* Great Vibes draws its glyphs high and to the right of the em box; same
-     optical nudge as the site's <Logo>. */
-  .mark span { display: block; transform: translate(-0.05em, 0.14em); }
+  /* logo.png has transparent padding around the badge, so it's drawn a bit larger. */
+  .mark { display: block; flex-shrink: 0; width: 52px; margin: -4px; }
   .shop { font-size: 20px; font-weight: 700; }
   h1 { margin: 0; font-size: 28px; letter-spacing: 0.08em; color: #036c5b; text-align: right; }
   .meta { margin-top: 4px; text-align: right; }
@@ -114,9 +119,10 @@ export function buildInvoiceHtml(order: Order, customer: Customer | null) {
 </style>
 </head>
 <body>
+  <img class="watermark" src="${logoUrl}" alt="" />
   <header>
     <div class="brand">
-      <div class="mark"><span>S</span></div>
+      <img class="mark" src="${logoUrl}" alt="" />
       <div class="shop">${SHOP_NAME}</div>
     </div>
     <div>
@@ -214,8 +220,10 @@ export function printInvoiceHtml(html: string, fileName: string) {
   });
 }
 
-// A4 at 96dpi; the capture padding stands in for the @page margin (16mm).
+// A4 at 96dpi (height rounded down so it never spills onto a second page);
+// the capture padding stands in for the @page margin (16mm).
 const A4_WIDTH_PX = 794;
+const A4_HEIGHT_PX = 1122;
 const CAPTURE_PADDING_PX = 60;
 const CAPTURE_SCALE = 2;
 
@@ -234,7 +242,7 @@ export async function downloadInvoicePdf(html: string, fileName: string) {
     left: "-10000px",
     top: "0",
     width: `${A4_WIDTH_PX}px`,
-    height: "1123px",
+    height: `${A4_HEIGHT_PX}px`,
     border: "0",
   });
 
@@ -251,6 +259,8 @@ export async function downloadInvoicePdf(html: string, fileName: string) {
       // Fall back to whatever fonts are available.
     }
     doc.body.style.padding = `${CAPTURE_PADDING_PX}px`;
+    // One full page (padding included) so the watermark centres on the sheet.
+    doc.body.style.minHeight = `${A4_HEIGHT_PX}px`;
 
     // Where a page may end: under a table row or one of the closing blocks,
     // so page breaks never cut through a line of text.
