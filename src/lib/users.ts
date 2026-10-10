@@ -7,6 +7,8 @@ export type User = {
   email: string;
   roleId: number;
   roleName: string;
+  // Profile photo URL.
+  profile?: string | null;
   isActive: boolean;
   createdDate: string;
   updatedDate: string | null;
@@ -18,6 +20,8 @@ export type UserUpdateInput = {
   roleId: number;
   isActive: boolean;
   password?: string | null;
+  // Profile photo URL; null removes it.
+  profile: string | null;
 };
 
 const ID_KEYS = [
@@ -81,11 +85,20 @@ export async function fetchCurrentUser(): Promise<User> {
   return fetchUserById(await resolveCurrentUserId());
 }
 
+// Lets views showing user details (the header avatar) refresh after a change.
+const userChanges = new EventTarget();
+
+export function onUserChanged(listener: () => void) {
+  userChanges.addEventListener("change", listener);
+  return () => userChanges.removeEventListener("change", listener);
+}
+
 export async function updateUser(
   id: number,
   input: UserUpdateInput,
 ): Promise<void> {
   await apiClient.put(`/api/User/Update/${id}`, input);
+  userChanges.dispatchEvent(new Event("change"));
 }
 
 export type UserCreateInput = {
@@ -94,6 +107,8 @@ export type UserCreateInput = {
   fullName: string | null;
   email: string;
   roleId: number;
+  // Profile photo URL (uploaded via /api/ImageUpload).
+  profile: string | null;
 };
 
 export async function fetchUsers(): Promise<User[]> {

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Inbox } from "lucide-react";
+import { Inbox, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -33,11 +33,19 @@ export function TableMessageRow({
   );
 }
 
-export function TableEmptyRow({ columns, message }: { columns: number; message: string }) {
+export function TableEmptyRow({
+  columns,
+  message,
+  icon: Icon = Inbox,
+}: {
+  columns: number;
+  message: string;
+  icon?: LucideIcon;
+}) {
   return (
     <TableMessageRow columns={columns}>
       <div className="flex flex-col items-center gap-2 text-muted-foreground">
-        <Inbox className="size-6" />
+        <Icon className="size-6" />
         <p className="text-sm">{message}</p>
       </div>
     </TableMessageRow>

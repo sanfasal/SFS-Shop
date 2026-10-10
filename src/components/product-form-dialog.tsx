@@ -166,7 +166,7 @@ function ProductForm({
         onUploadingChange={setUploadingImage}
       />
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="product-name">Name</Label>
+        <Label htmlFor="product-name" required>Name</Label>
         <Input
           id="product-name"
           value={values.productName}
@@ -175,7 +175,7 @@ function ProductForm({
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="product-code">Product code</Label>
+          <Label htmlFor="product-code" required>Product code</Label>
           <Input
             id="product-code"
             value={values.productCode}
@@ -183,7 +183,7 @@ function ProductForm({
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="product-category">Category</Label>
+          <Label htmlFor="product-category" required>Category</Label>
           <Select
             items={categoryItems}
             value={values.categoryId || null}
@@ -206,7 +206,7 @@ function ProductForm({
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="product-price">Price (USD)</Label>
+          <Label htmlFor="product-price" required>Price (USD)</Label>
           <Input
             id="product-price"
             type="number"
@@ -217,7 +217,7 @@ function ProductForm({
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="product-quantity">Quantity</Label>
+          <Label htmlFor="product-quantity" required>Quantity</Label>
           <Input
             id="product-quantity"
             type="number"

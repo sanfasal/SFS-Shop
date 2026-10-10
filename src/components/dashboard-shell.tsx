@@ -16,7 +16,6 @@ import {
   Settings,
   ShieldCheck,
   ShoppingCart,
-  User,
   Users,
   X,
 } from "lucide-react";
@@ -27,14 +26,16 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/components/auth-provider";
+import { AccountLabel } from "@/components/account-label";
 import { Logo } from "@/components/logo";
 import { LogoLoader } from "@/components/logo-loader";
 import { ModeToggle } from "@/components/mode-toggle";
+import { UserAvatar } from "@/components/user-avatar";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { useHydrated } from "@/hooks/use-hydrated";
 import {
   clearDashboardEntrance,
@@ -96,6 +97,7 @@ function isActive(pathname: string, href: string) {
 
 export function DashboardShell({ children }: { children: ReactNode }) {
   const { isAuthenticated, email, logout, pending } = useAuth();
+  const currentUser = useCurrentUser();
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -199,23 +201,23 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           compact ? "flex-col p-3" : "p-4"
         )}
       >
-        <span
-          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/15"
-          title={compact ? email ?? undefined : undefined}
-        >
-          <User className="size-4" />
+        <span title={compact ? email ?? undefined : undefined}>
+          <UserAvatar
+            user={currentUser}
+            className="size-8 ring-white/20"
+            fallbackClassName="bg-white/15 text-white"
+          />
         </span>
-        {!compact && <p className="min-w-0 flex-1 truncate text-sm">{email}</p>}
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="text-white hover:bg-white/10 hover:text-white"
-          aria-label="Log out"
-          onClick={handleLogout}
-          disabled={pending !== null}
-        >
-          <LogOut />
-        </Button>
+        {!compact && (
+          <div className="min-w-0 flex-1">
+            {currentUser?.fullName && (
+              <p className="truncate text-sm font-medium">{currentUser.fullName}</p>
+            )}
+            <p className={cn("truncate", currentUser?.fullName ? "text-xs text-white/70" : "text-sm")}>
+              {email}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -313,15 +315,21 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               <ModeToggle />
               <DropdownMenu>
                 <DropdownMenuTrigger
-                  render={<Button variant="ghost" size="icon" aria-label="Account menu" />}
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Account menu"
+                      // Brand ring around the photo while the account menu is open.
+                      className="rounded-full aria-expanded:bg-transparent aria-expanded:ring-2 aria-expanded:ring-primary aria-expanded:ring-offset-2 aria-expanded:ring-offset-background"
+                    />
+                  }
                 >
-                  <User className="size-5" />
+                  <UserAvatar user={currentUser} className="size-8" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="min-w-56">
                   <DropdownMenuGroup>
-                    <DropdownMenuLabel className="truncate font-normal text-muted-foreground">
-                      {email}
-                    </DropdownMenuLabel>
+                    <AccountLabel user={currentUser} email={email} />
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem render={<Link href="/settings" />}>

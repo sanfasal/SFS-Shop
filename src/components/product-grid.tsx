@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, LayoutGrid, Plus, Search, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/components/auth-provider";
 import { ConfirmDeleteDialog } from "@/components/dashboard/confirm-delete-dialog";
+import { CreateOrderDialog } from "@/components/order-form";
 import { ProductCard } from "@/components/product-card";
 import { ProductFormDialog } from "@/components/product-form-dialog";
 import { useApiData } from "@/hooks/use-api-data";
@@ -16,6 +17,7 @@ import { fetchCategories } from "@/lib/categories";
 import {
   createProduct,
   deleteProduct,
+  getProductImage,
   updateProduct,
   type Product,
   type ProductUpdateInput,
@@ -27,9 +29,16 @@ const FETCH_SIZE = 100;
 const PAGE_SIZE = 12;
 const ALL_CATEGORIES = "all";
 
-// Category filter pills in the brand color; overrides the default segmented tab look.
+// Category tabs: round thumbnail on top, name underneath. The active tab's
+// colors are marked important so the base tab styles and hover can't override them.
 const categoryTabClass =
-  "h-8 flex-none rounded-full border-border bg-card px-4 text-foreground/70 shadow-none hover:border-primary/50 hover:text-primary dark:text-muted-foreground dark:hover:text-primary data-active:border-primary data-active:bg-primary data-active:text-primary-foreground data-active:shadow-sm dark:data-active:border-primary dark:data-active:bg-primary dark:data-active:text-primary-foreground";
+  "group/cat h-auto w-20 flex-none flex-col items-center justify-start gap-2 rounded-xl border-0 bg-transparent px-1 py-1 text-xs font-medium whitespace-normal text-foreground/70 shadow-none hover:text-primary dark:text-muted-foreground dark:hover:text-primary data-active:border-transparent! data-active:bg-transparent! data-active:font-semibold data-active:text-primary! data-active:shadow-none!";
+
+const categoryThumbClass =
+  "flex size-16 items-center justify-center overflow-hidden rounded-full bg-muted ring-2 ring-transparent ring-offset-2 ring-offset-background transition-shadow group-hover/cat:ring-primary/40 group-data-active/cat:ring-primary";
+
+const categoryImageClass =
+  "size-full object-cover transition-transform duration-300 group-hover/cat:scale-110 motion-reduce:transition-none";
 
 export function ProductGrid() {
   // Logged-in admins can manage the catalog right from the shop.
@@ -66,6 +75,7 @@ export function ProductGrid() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [deleting, setDeleting] = useState<Product | null>(null);
+  const [orderOpen, setOrderOpen] = useState(false);
 
   async function handleSubmit(values: ProductUpdateInput) {
     if (editing) {
@@ -78,14 +88,23 @@ export function ProductGrid() {
     await refetch();
   }
 
+  // Categories have no image of their own, so each tab shows a photo from one
+  // of its products (the first one that has a photo), or a letter tile if none do.
   const categories = useMemo(() => {
-    const byId = new Map<number, string>();
+    const byId = new Map<number, { id: number; name: string; image: string | null }>();
     for (const product of allProducts) {
-      byId.set(product.categoryId, product.categoryName);
+      const entry = byId.get(product.categoryId) ?? {
+        id: product.categoryId,
+        name: product.categoryName,
+        image: null,
+      };
+      entry.image ??= product.imageUrl || null;
+      byId.set(product.categoryId, entry);
     }
-    return Array.from(byId, ([id, name]) => ({ id, name })).sort((a, b) =>
-      a.name.localeCompare(b.name)
-    );
+    return Array.from(byId.values(), (c) => ({
+      ...c,
+      image: c.image ?? getProductImage({ productName: c.name, imageUrl: null }),
+    })).sort((a, b) => a.name.localeCompare(b.name));
   }, [allProducts]);
 
   const filteredProducts =
@@ -99,26 +118,8 @@ export function ProductGrid() {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 sm:py-10">
       <h1 className="sr-only">Products</h1>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Tabs
-          value={category}
-          onValueChange={(value) => {
-            setCategory(value as string);
-            setPage(1);
-          }}
-        >
-          <TabsList className="h-auto flex-wrap justify-start gap-2 bg-transparent p-0">
-            <TabsTrigger value={ALL_CATEGORIES} className={categoryTabClass}>
-              All
-            </TabsTrigger>
-            {categories.map((c) => (
-              <TabsTrigger key={c.id} value={String(c.id)} className={categoryTabClass}>
-                {c.name}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-        <div className="flex w-full items-center gap-2 sm:w-auto">
+      <div className="flex flex-col gap-4">
+        <div className="flex w-full items-center gap-2 sm:justify-end">
           <div className="relative flex-1 sm:w-72 sm:flex-none">
             <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -129,6 +130,12 @@ export function ProductGrid() {
               className="h-9 rounded-full pl-9"
             />
           </div>
+          {manage && (
+            <Button variant="outline" aria-label="Create order" onClick={() => setOrderOpen(true)}>
+              <ShoppingCart />
+              <span className="hidden sm:inline">Create order</span>
+            </Button>
+          )}
           {manage && (
             <Button
               onClick={() => {
@@ -141,6 +148,40 @@ export function ProductGrid() {
             </Button>
           )}
         </div>
+        <Tabs
+          className="min-w-0"
+          value={category}
+          onValueChange={(value) => {
+            setCategory(value as string);
+            setPage(1);
+          }}
+        >
+          <TabsList className="h-auto w-full flex-nowrap justify-start gap-2 overflow-x-auto bg-transparent p-1 group-data-horizontal/tabs:h-auto sm:flex-wrap">
+            <TabsTrigger value={ALL_CATEGORIES} className={categoryTabClass}>
+              <span className={categoryThumbClass}>
+                <LayoutGrid className="size-6! text-primary" />
+              </span>
+              <span className="line-clamp-2 w-full text-center leading-normal">All</span>
+            </TabsTrigger>
+            {categories.map((c) => (
+              <TabsTrigger key={c.id} value={String(c.id)} className={categoryTabClass}>
+                <span className={categoryThumbClass}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary user-provided URLs or a generated data: URI */}
+                  <img
+                    src={c.image}
+                    alt=""
+                    className={categoryImageClass}
+                    // Broken photo URL: fall back to the letter tile.
+                    onError={(e) => {
+                      e.currentTarget.src = getProductImage({ productName: c.name, imageUrl: null });
+                    }}
+                  />
+                </span>
+                <span className="line-clamp-2 w-full text-center leading-normal">{c.name}</span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
       </div>
 
       {error ? (
@@ -209,6 +250,8 @@ export function ProductGrid() {
             categories={categoryList.data ?? []}
             onSubmit={handleSubmit}
           />
+          {/* Saving an order changes stock, so refresh the cards afterwards. */}
+          <CreateOrderDialog open={orderOpen} onOpenChange={setOrderOpen} onCreated={refetch} />
           <ConfirmDeleteDialog
             open={deleting !== null}
             onOpenChange={(open) => !open && setDeleting(null)}

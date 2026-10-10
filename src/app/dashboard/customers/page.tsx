@@ -39,7 +39,7 @@ import {
   TableLoadingRows,
 } from "@/components/dashboard/table-states";
 import { useApiData } from "@/hooks/use-api-data";
-import { deleteCustomer, fetchCustomers, type Customer } from "@/lib/customers";
+import { customerLabel, deleteCustomer, fetchCustomers, type Customer } from "@/lib/customers";
 import { formatDate } from "@/lib/format";
 
 const PAGE_SIZE = 10;
@@ -159,7 +159,7 @@ export default function CustomersPage() {
             ) : (
               rows.map((customer) => (
                 <TableRow key={customer.id}>
-                  <TableCell className="pl-4 font-medium">{customer.fullName}</TableCell>
+                  <TableCell className="pl-4 font-medium">{customer.fullName || "—"}</TableCell>
                   <TableCell className="tabular-nums">{customer.phone || "—"}</TableCell>
                   <TableCell className="max-w-sm truncate text-muted-foreground">
                     {customer.address || "—"}
@@ -220,7 +220,7 @@ export default function CustomersPage() {
       <ConfirmDeleteDialog
         open={deleting !== null}
         onOpenChange={(open) => !open && setDeleting(null)}
-        title={`Delete ${deleting?.fullName ?? "customer"}?`}
+        title={`Delete ${deleting ? customerLabel(deleting) : "customer"}?`}
         description="This permanently removes the customer."
         successMessage="Customer deleted"
         onConfirm={async () => {

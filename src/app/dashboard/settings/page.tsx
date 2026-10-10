@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,12 +17,19 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/components/auth-provider";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { StatusBadge } from "@/components/dashboard/status-badge";
+import { ProfilePhotoInput } from "@/components/profile-photo-input";
+import { Badge } from "@/components/ui/badge";
 import { errorMessage } from "@/lib/api-error";
+import { changePassword } from "@/lib/auth";
+import { formatDate } from "@/lib/format";
 import { fetchCurrentUser, updateUser, type User } from "@/lib/users";
 
 type ProfileValues = {
   fullName: string;
   email: string;
+  // Profile photo URL ("" for none).
+  photo: string;
 };
 
 type ProfileErrors = {
@@ -31,11 +39,13 @@ type ProfileErrors = {
 };
 
 type PasswordValues = {
+  currentPassword: string;
   password: string;
   confirmPassword: string;
 };
 
 type PasswordErrors = {
+  currentPassword?: string;
   password?: string;
   confirmPassword?: string;
   form?: string;
@@ -62,12 +72,20 @@ function validateProfile(values: ProfileValues): ProfileErrors {
 function validatePassword(values: PasswordValues): PasswordErrors {
   const errors: PasswordErrors = {};
 
+  if (!values.currentPassword) {
+    errors.currentPassword = "Enter your current password.";
+  }
+
   if (!values.password) {
     errors.password = "Password is required.";
   } else if (values.password.length < 6) {
     errors.password = "Password must be at least 6 characters.";
   } else if (values.password.length > 100) {
     errors.password = "Password must be 100 characters or fewer.";
+  }
+
+  if (!errors.password && values.password === values.currentPassword) {
+    errors.password = "New password must be different from your current one.";
   }
 
   if (values.password && values.password !== values.confirmPassword) {
@@ -84,11 +102,13 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [profile, setProfile] = useState<ProfileValues>({ fullName: "", email: "" });
+  const [profile, setProfile] = useState<ProfileValues>({ fullName: "", email: "", photo: "" });
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [profileErrors, setProfileErrors] = useState<ProfileErrors>({});
   const [savingProfile, setSavingProfile] = useState(false);
 
   const [passwords, setPasswords] = useState<PasswordValues>({
+    currentPassword: "",
     password: "",
     confirmPassword: "",
   });
@@ -107,7 +127,7 @@ export default function SettingsPage() {
       .then((result) => {
         if (ignore) return;
         setUser(result);
-        setProfile({ fullName: result.fullName ?? "", email: result.email });
+        setProfile({ fullName: result.fullName ?? "", email: result.email, photo: result.profile ?? "" });
       })
       .catch((err) => {
         if (!ignore) {
@@ -138,6 +158,7 @@ export default function SettingsPage() {
 
     const email = profile.email.trim();
     const fullName = profile.fullName.trim() || null;
+    const photo = profile.photo || null;
 
     setSavingProfile(true);
     try {
@@ -147,8 +168,9 @@ export default function SettingsPage() {
         roleId: user.roleId,
         isActive: user.isActive,
         password: null,
+        profile: photo,
       });
-      setUser({ ...user, fullName, email });
+      setUser({ ...user, fullName, email, profile: photo });
       setAuthEmail(email);
       toast.success("Profile updated.");
     } catch (err) {
@@ -168,18 +190,26 @@ export default function SettingsPage() {
 
     setSavingPassword(true);
     try {
-      // Send the saved profile, not unsaved edits from the Profile tab.
-      await updateUser(user.id, {
-        fullName: user.fullName,
-        email: user.email,
-        roleId: user.roleId,
-        isActive: user.isActive,
-        password: passwords.password,
+      await changePassword({
+        currentPassword: passwords.currentPassword,
+        newPassword: passwords.password,
+        confirmPassword: passwords.confirmPassword,
       });
-      setPasswords({ password: "", confirmPassword: "" });
+      setPasswords({ currentPassword: "", password: "", confirmPassword: "" });
       toast.success("Password updated.");
     } catch (err) {
-      setPasswordErrors({ form: errorMessage(err, "Couldn't change your password.") });
+      const message = errorMessage(err, "Couldn't change your password.");
+      // A rejected current password belongs under that field; anything else
+      // (network, server) goes under the form.
+      const wrongCurrent =
+        isAxiosError(err) &&
+        (err.response?.status === 400 || err.response?.status === 401) &&
+        /current|old|incorrect|invalid|wrong/i.test(message);
+      setPasswordErrors(
+        wrongCurrent
+          ? { currentPassword: "Current password is incorrect." }
+          : { form: message }
+      );
     } finally {
       setSavingPassword(false);
     }
@@ -217,7 +247,7 @@ export default function SettingsPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Profile</CardTitle>
-                <CardDescription>Update your name and email.</CardDescription>
+                <CardDescription>Update your photo, name and email.</CardDescription>
               </CardHeader>
               <CardContent>
                 <form
@@ -226,11 +256,37 @@ export default function SettingsPage() {
                   className="flex flex-col gap-5"
                 >
                   <div className="flex flex-col gap-1.5">
+                    <Label>Profile photo</Label>
+                    <ProfilePhotoInput
+                      value={profile.photo}
+                      onChange={(photo) => setProfile((prev) => ({ ...prev, photo }))}
+                      onUploadingChange={setUploadingPhoto}
+                    />
+                  </div>
+
+                  {/* Read-only account details; an admin changes these on the Users page. */}
+                  <dl className="grid grid-cols-3 gap-3 rounded-lg border bg-muted/30 p-3 text-sm">
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <dt className="text-xs text-muted-foreground">Role</dt>
+                      <dd>
+                        <Badge variant="outline">{user.roleName || "—"}</Badge>
+                      </dd>
+                    </div>
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <dt className="text-xs text-muted-foreground">Status</dt>
+                      <dd>
+                        <StatusBadge active={user.isActive} />
+                      </dd>
+                    </div>
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <dt className="text-xs text-muted-foreground">Member since</dt>
+                      <dd className="font-medium">{formatDate(user.createdDate)}</dd>
+                    </div>
+                  </dl>
+
+                  <div className="flex flex-col gap-1.5">
                     <Label htmlFor="username">Username</Label>
                     <Input id="username" value={user.username} disabled readOnly />
-                    <p className="text-xs text-muted-foreground">
-                      Role: {user.roleName}
-                    </p>
                   </div>
 
                   <div className="flex flex-col gap-1.5">
@@ -256,7 +312,7 @@ export default function SettingsPage() {
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email" required>Email</Label>
                     <Input
                       id="email"
                       name="email"
@@ -280,8 +336,12 @@ export default function SettingsPage() {
                     <p className="text-sm text-destructive">{profileErrors.form}</p>
                   )}
 
-                  <Button type="submit" disabled={savingProfile} className="w-full">
-                    {savingProfile ? "Saving..." : "Save profile"}
+                  <Button
+                    type="submit"
+                    disabled={savingProfile || uploadingPhoto}
+                    className="w-full"
+                  >
+                    {savingProfile ? "Saving..." : uploadingPhoto ? "Uploading..." : "Save profile"}
                   </Button>
                 </form>
               </CardContent>
@@ -292,7 +352,7 @@ export default function SettingsPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Password</CardTitle>
-                <CardDescription>Choose a new password for your account.</CardDescription>
+                <CardDescription>Enter your current password, then choose a new one.</CardDescription>
               </CardHeader>
               <CardContent>
                 <form
@@ -301,9 +361,33 @@ export default function SettingsPage() {
                   className="flex flex-col gap-5"
                 >
                   <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="password">New password</Label>
+                    <Label htmlFor="currentPassword" required>Current password</Label>
+                    <PasswordInput
+                      id="currentPassword"
+                      placeholder="Enter your current password"
+                      name="currentPassword"
+                      autoComplete="current-password"
+                      value={passwords.currentPassword}
+                      onChange={(e) =>
+                        setPasswords((prev) => ({ ...prev, currentPassword: e.target.value }))
+                      }
+                      aria-invalid={Boolean(passwordErrors.currentPassword)}
+                      aria-describedby={
+                        passwordErrors.currentPassword ? "currentPassword-error" : undefined
+                      }
+                    />
+                    {passwordErrors.currentPassword && (
+                      <p id="currentPassword-error" className="text-sm text-destructive">
+                        {passwordErrors.currentPassword}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="password" required>New password</Label>
                     <PasswordInput
                       id="password"
+                      placeholder="At least 6 characters"
                       name="password"
                       autoComplete="new-password"
                       value={passwords.password}
@@ -323,9 +407,10 @@ export default function SettingsPage() {
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="confirmPassword">Confirm new password</Label>
+                    <Label htmlFor="confirmPassword" required>Confirm new password</Label>
                     <PasswordInput
                       id="confirmPassword"
+                      placeholder="Re-enter the new password"
                       name="confirmPassword"
                       autoComplete="new-password"
                       value={passwords.confirmPassword}

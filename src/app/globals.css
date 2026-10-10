@@ -138,6 +138,21 @@
   html {
     @apply font-sans;
   }
+  /* Tailwind v4 leaves buttons with the default arrow; show the hand on
+     anything clickable, and "not allowed" when it's disabled. */
+  button,
+  [role="button"],
+  [role="tab"],
+  [role="switch"],
+  [role="checkbox"],
+  input[type="file"] {
+    cursor: pointer;
+  }
+  button:disabled,
+  [aria-disabled="true"],
+  [data-disabled] {
+    cursor: not-allowed;
+  }
 }
 /* Same palette running top to bottom, for the dashboard sidebar. */
 @utility bg-sidebar-gradient {

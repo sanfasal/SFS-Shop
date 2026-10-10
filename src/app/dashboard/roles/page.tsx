@@ -183,7 +183,7 @@ function RoleForm({ role, onSaved }: { role: Role | null; onSaved: () => Promise
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="role-name">Name</Label>
+        <Label htmlFor="role-name" required>Name</Label>
         <Input
           id="role-name"
           maxLength={50}

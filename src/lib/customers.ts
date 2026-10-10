@@ -3,7 +3,8 @@ import type { PagedResult } from "@/lib/products";
 
 export type Customer = {
   id: number;
-  fullName: string;
+  // Optional: only the phone number is required.
+  fullName: string | null;
   phone: string | null;
   address: string | null;
   isActive: boolean;
@@ -12,14 +13,19 @@ export type Customer = {
 };
 
 export type CustomerCreateInput = {
-  fullName: string;
-  phone: string | null;
+  fullName: string | null;
+  phone: string;
   address: string | null;
 };
 
 export type CustomerUpdateInput = CustomerCreateInput & {
   isActive: boolean;
 };
+
+// Name to show for a customer: the name when set, otherwise the phone number.
+export function customerLabel(customer: Pick<Customer, "id" | "fullName" | "phone">) {
+  return customer.fullName?.trim() || customer.phone || `#${customer.id}`;
+}
 
 export async function fetchCustomers(params: {
   page: number;

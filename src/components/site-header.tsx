@@ -9,21 +9,24 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/components/auth-provider";
+import { AccountLabel } from "@/components/account-label";
 import { LanguageToggle } from "@/components/language-toggle";
 import { LoginDialog } from "@/components/login-dialog";
 import { Logo } from "@/components/logo";
 import { ModeToggle } from "@/components/mode-toggle";
+import { UserAvatar } from "@/components/user-avatar";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 // The admin dashboard runs as a separate server (see package.json dev:dashboard).
 const DASHBOARD_URL = process.env.NEXT_PUBLIC_DASHBOARD_URL || "http://localhost:3001";
 
 export function SiteHeader() {
   const { isAuthenticated, email, logout, pending } = useAuth();
+  const currentUser = useCurrentUser();
   const [loginOpen, setLoginOpen] = useState(false);
 
   return (
@@ -40,15 +43,21 @@ export function SiteHeader() {
           {isAuthenticated ? (
             <DropdownMenu>
               <DropdownMenuTrigger
-                render={<Button variant="ghost" size="icon" aria-label="Account menu" />}
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Account menu"
+                    // Brand ring around the photo while the account menu is open.
+                    className="rounded-full aria-expanded:bg-transparent aria-expanded:ring-2 aria-expanded:ring-primary aria-expanded:ring-offset-2 aria-expanded:ring-offset-background"
+                  />
+                }
               >
-                <User className="size-5" />
+                <UserAvatar user={currentUser} className="size-8" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="min-w-56">
                 <DropdownMenuGroup>
-                  <DropdownMenuLabel className="truncate font-normal text-muted-foreground">
-                    {email}
-                  </DropdownMenuLabel>
+                  <AccountLabel user={currentUser} email={email} />
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

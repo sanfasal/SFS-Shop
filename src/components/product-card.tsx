@@ -28,7 +28,7 @@ export function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
       <Link href={href} tabIndex={-1} aria-hidden className="absolute inset-0 -z-10">
         <ProductImage
           product={product}
-          className="size-full transform-gpu object-cover transition-transform duration-500 ease-out group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+          className="size-full transform-gpu object-cover transition-transform duration-700 ease-out group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
         />
       </Link>
 

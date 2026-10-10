@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Plus, Search } from "lucide-react";
+import { ListFilter, Plus, Search, UserRound, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -33,6 +34,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAuth } from "@/components/auth-provider";
+import { ProfilePhotoInput } from "@/components/profile-photo-input";
+import { UserAvatar } from "@/components/user-avatar";
 import { ConfirmDeleteDialog } from "@/components/dashboard/confirm-delete-dialog";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { RowActions } from "@/components/dashboard/row-actions";
@@ -49,6 +52,13 @@ import { fetchRoles, type Role } from "@/lib/roles";
 import { createUser, deleteUser, fetchUsers, updateUser, type User } from "@/lib/users";
 
 const COLUMNS = 6;
+const ALL = "all";
+
+const STATUS_ITEMS = [
+  { value: ALL, label: "All statuses" },
+  { value: "active", label: "Active" },
+  { value: "inactive", label: "Inactive" },
+];
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function UsersPage() {
@@ -56,18 +66,45 @@ export default function UsersPage() {
   const users = useApiData(fetchUsers, "Couldn't load users.");
   const roles = useApiData(fetchRoles, "Couldn't load roles.");
   const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState(ALL);
+  const [statusFilter, setStatusFilter] = useState(ALL);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
   const [deleting, setDeleting] = useState<User | null>(null);
 
+  const roleItems = [
+    { value: ALL, label: "All roles" },
+    ...(roles.data ?? []).map((r) => ({ value: String(r.id), label: r.name })),
+  ];
+
   const query = search.trim().toLowerCase();
-  const rows = (users.data ?? []).filter(
-    (u) =>
-      !query ||
-      [u.username, u.fullName, u.email, u.roleName].some((field) =>
+  // Created range in local time, including the whole last day.
+  const from = fromDate ? new Date(`${fromDate}T00:00:00`).getTime() : null;
+  const to = toDate ? new Date(`${toDate}T23:59:59.999`).getTime() : null;
+  const activeFilterCount =
+    Number(roleFilter !== ALL) + Number(statusFilter !== ALL) + Number(fromDate !== "" || toDate !== "");
+
+  const rows = (users.data ?? []).filter((u) => {
+    if (
+      query &&
+      ![u.username, u.fullName, u.email, u.roleName].some((field) =>
         field?.toLowerCase().includes(query)
       )
-  );
+    ) {
+      return false;
+    }
+    if (roleFilter !== ALL && String(u.roleId) !== roleFilter) return false;
+    if (statusFilter !== ALL && u.isActive !== (statusFilter === "active")) return false;
+    if (from !== null || to !== null) {
+      const created = new Date(u.createdDate).getTime();
+      if (Number.isNaN(created)) return false;
+      if (from !== null && created < from) return false;
+      if (to !== null && created > to) return false;
+    }
+    return true;
+  });
 
   return (
     <>
@@ -88,8 +125,8 @@ export default function UsersPage() {
       />
 
       <Card className="gap-0 overflow-hidden py-0">
-        <div className="border-b p-4">
-          <div className="relative w-full max-w-xs">
+        <div className="flex items-center justify-end gap-3 border-b p-4">
+          <div className="relative min-w-0 flex-1 sm:max-w-xs">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search users..."
@@ -98,6 +135,94 @@ export default function UsersPage() {
               className="pl-8"
             />
           </div>
+          <Popover>
+            <PopoverTrigger render={<Button variant="outline" />}>
+              <ListFilter />
+              Filter
+              {activeFilterCount > 0 && (
+                <span className="flex size-5 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+                  {activeFilterCount}
+                </span>
+              )}
+            </PopoverTrigger>
+            <PopoverContent align="end" className="flex w-80 flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <Label>Role</Label>
+                <Select
+                  items={roleItems}
+                  value={roleFilter}
+                  onValueChange={(value) => setRoleFilter((value as string | null) ?? ALL)}
+                >
+                  <SelectTrigger className="w-full" aria-label="Filter by role">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roleItems.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>Status</Label>
+                <Select
+                  items={STATUS_ITEMS}
+                  value={statusFilter}
+                  onValueChange={(value) => setStatusFilter((value as string | null) ?? ALL)}
+                >
+                  <SelectTrigger className="w-full" aria-label="Filter by status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STATUS_ITEMS.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>Created</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="date"
+                    aria-label="Created from"
+                    value={fromDate}
+                    max={toDate || undefined}
+                    onChange={(e) => setFromDate(e.target.value)}
+                    className="min-w-0 flex-1"
+                  />
+                  <span className="text-sm text-muted-foreground">to</span>
+                  <Input
+                    type="date"
+                    aria-label="Created to"
+                    value={toDate}
+                    min={fromDate || undefined}
+                    onChange={(e) => setToDate(e.target.value)}
+                    className="min-w-0 flex-1"
+                  />
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="self-end text-destructive hover:bg-destructive/10 hover:text-destructive dark:hover:bg-destructive/20"
+                disabled={activeFilterCount === 0}
+                onClick={() => {
+                  setRoleFilter(ALL);
+                  setStatusFilter(ALL);
+                  setFromDate("");
+                  setToDate("");
+                }}
+              >
+                <X />
+                Clear filters
+              </Button>
+            </PopoverContent>
+          </Popover>
         </div>
 
         <Table>
@@ -117,15 +242,13 @@ export default function UsersPage() {
             ) : users.loading && !users.data ? (
               <TableLoadingRows columns={COLUMNS} />
             ) : rows.length === 0 ? (
-              <TableEmptyRow columns={COLUMNS} message="No users found." />
+              <TableEmptyRow columns={COLUMNS} message="No users found." icon={UserRound} />
             ) : (
               rows.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="pl-4">
                     <div className="flex items-center gap-3">
-                      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary uppercase">
-                        {(user.fullName || user.username).slice(0, 2)}
-                      </span>
+                      <UserAvatar user={user} />
                       <div className="min-w-0">
                         <p className="truncate font-medium">
                           {user.fullName || user.username}
@@ -224,6 +347,8 @@ function UserForm({
   const [roleId, setRoleId] = useState(user ? String(user.roleId) : "");
   const [password, setPassword] = useState("");
   const [isActive, setIsActive] = useState(user?.isActive ?? true);
+  const [profile, setProfile] = useState(user?.profile ?? "");
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -254,6 +379,7 @@ function UserForm({
           roleId: Number(roleId),
           isActive,
           password: null,
+          profile: profile || null,
         });
         toast.success("User updated");
       } else {
@@ -263,6 +389,7 @@ function UserForm({
           fullName: fullName.trim() || null,
           email: email.trim(),
           roleId: Number(roleId),
+          profile: profile || null,
         });
         toast.success("User added");
       }
@@ -276,13 +403,17 @@ function UserForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1.5">
+        <Label>Profile photo</Label>
+        <ProfilePhotoInput value={profile} onChange={setProfile} onUploadingChange={setUploading} />
+      </div>
       {user ? (
         <p className="text-sm text-muted-foreground">
           Username: <span className="font-medium text-foreground">@{user.username}</span>
         </p>
       ) : (
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="user-username">Username</Label>
+          <Label htmlFor="user-username" required>Username</Label>
           <Input
             id="user-username"
             maxLength={100}
@@ -302,7 +433,7 @@ function UserForm({
         />
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="user-email">Email</Label>
+        <Label htmlFor="user-email" required>Email</Label>
         <Input
           id="user-email"
           type="email"
@@ -313,7 +444,7 @@ function UserForm({
         />
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="user-role">Role</Label>
+        <Label htmlFor="user-role" required>Role</Label>
         <Select
           items={roleItems}
           value={roleId || null}
@@ -335,9 +466,10 @@ function UserForm({
           autofill can't silently change it. Users change their own in Settings. */}
       {!user && (
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="user-password">Password</Label>
+          <Label htmlFor="user-password" required>Password</Label>
           <PasswordInput
             id="user-password"
+            placeholder="At least 6 characters"
             autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -355,8 +487,8 @@ function UserForm({
       )}
       {error && <p className="text-sm text-destructive">{error}</p>}
       <DialogFooter>
-        <Button type="submit" disabled={submitting}>
-          {submitting ? "Saving..." : user ? "Save changes" : "Add user"}
+        <Button type="submit" disabled={submitting || uploading}>
+          {submitting ? "Saving..." : uploading ? "Uploading..." : user ? "Save changes" : "Add user"}
         </Button>
       </DialogFooter>
     </form>

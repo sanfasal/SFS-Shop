@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ShoppingBag, Tag, Truck } from "lucide-react";
 import { cn } from "cn";
 import { useAuth } from "@/components/auth-provider";
-import { LoginForm } from "@/components/login-form";
+import { LOGIN_VIEW_TEXT, LoginForm, type LoginView } from "@/components/login-form";
 import { Logo } from "@/components/logo";
 import { LogoLoader } from "@/components/logo-loader";
 import { useHydrated } from "@/hooks/use-hydrated";
@@ -45,6 +45,8 @@ export default function LoginPage() {
   // Set once this page's form has accepted credentials, so the login plays the
   // door animation instead of redirecting straight away.
   const [signedInHere, setSignedInHere] = useState(false);
+  // Sign in, or one of the forgot/reset password steps.
+  const [view, setView] = useState<LoginView>("login");
   if (pending === "login" && !signedInHere) setSignedInHere(true);
 
   // Arriving from a dashboard logout: start with the doors open, then shut them.
@@ -147,14 +149,18 @@ export default function LoginPage() {
           <div className="flex flex-col items-center gap-4 text-center">
             <Logo size="lg" />
             <div className="space-y-1.5">
-              <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
+              <h1 className="text-2xl font-semibold tracking-tight">
+                {LOGIN_VIEW_TEXT[view].title}
+              </h1>
               <p className="text-sm text-muted-foreground">
-                Welcome back! Sign in to your sfs-shop admin account.
+                {view === "login"
+                  ? "Welcome back! Sign in to your sfs-shop admin account."
+                  : LOGIN_VIEW_TEXT[view].description}
               </p>
             </div>
           </div>
 
-          <LoginForm />
+          <LoginForm onViewChange={setView} />
         </div>
       </section>
     </main>

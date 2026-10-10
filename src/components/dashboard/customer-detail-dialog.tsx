@@ -14,7 +14,7 @@ import {
 import { DetailItem } from "@/components/dashboard/order-detail-dialog";
 import { OrderStatusBadge, StatusBadge } from "@/components/dashboard/status-badge";
 import { useApiData } from "@/hooks/use-api-data";
-import { fetchCustomerById, type Customer } from "@/lib/customers";
+import { customerLabel, fetchCustomerById, type Customer } from "@/lib/customers";
 import { currency, formatDate } from "@/lib/format";
 import { fetchOrders, orderLabel } from "@/lib/orders";
 
@@ -31,7 +31,7 @@ export function CustomerDetailDialog({
     <Dialog open={customer !== null} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{customer?.fullName ?? "Customer"}</DialogTitle>
+          <DialogTitle>{customer ? customerLabel(customer) : "Customer"}</DialogTitle>
         </DialogHeader>
         {customer && <CustomerDetail key={customer.id} customerId={customer.id} />}
       </DialogContent>

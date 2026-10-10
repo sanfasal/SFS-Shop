@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
 import { useAuth } from "@/components/auth-provider";
+import { PasswordResetForm } from "@/components/password-reset-form";
 
 type Errors = {
   email?: string;
@@ -35,16 +36,55 @@ const iconClass =
   "pointer-events-none absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2 text-muted-foreground";
 const inputClass = "h-10 pl-9";
 
-type LoginFormProps = {
-  onSuccess?: () => void;
+export type LoginView = "login" | "forgot" | "reset";
+
+// Heading text for each step, for the page or dialog around the form.
+export const LOGIN_VIEW_TEXT: Record<LoginView, { title: string; description: string }> = {
+  login: { title: "Sign in", description: "Welcome back! Sign in to your sfs-shop account." },
+  forgot: {
+    title: "Forgot password",
+    description: "Enter your email and we'll send you a 6-digit code to reset your password.",
+  },
+  reset: {
+    title: "Reset password",
+    description: "Enter the code from your email and choose a new password.",
+  },
 };
 
-export function LoginForm({ onSuccess }: LoginFormProps) {
+type LoginFormProps = {
+  onSuccess?: () => void;
+  // Lets the surrounding page or dialog swap its heading for each step.
+  onViewChange?: (view: LoginView) => void;
+};
+
+export function LoginForm({ onSuccess, onViewChange }: LoginFormProps) {
   const { login } = useAuth();
+  const [view, setViewState] = useState<LoginView>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<Errors>({});
   const [submitting, setSubmitting] = useState(false);
+
+  function setView(next: LoginView) {
+    setViewState(next);
+    onViewChange?.(next);
+  }
+
+  if (view !== "login") {
+    return (
+      <PasswordResetForm
+        initialEmail={email}
+        onStepChange={(step) => setView(step === "request" ? "forgot" : "reset")}
+        onBack={() => setView("login")}
+        onDone={(resetEmail) => {
+          setEmail(resetEmail);
+          setPassword("");
+          setErrors({});
+          setView("login");
+        }}
+      />
+    );
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -132,6 +172,20 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
             {errors.password}
           </p>
         )}
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="link"
+            className="h-auto p-0 text-xs"
+            disabled={submitting}
+            onClick={() => {
+              setErrors({});
+              setView("forgot");
+            }}
+          >
+            Forgot password?
+          </Button>
+        </div>
       </div>
 
       {errors.form && <p className="text-sm text-destructive">{errors.form}</p>}

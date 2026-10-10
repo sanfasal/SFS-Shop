@@ -27,7 +27,8 @@ export function buildInvoiceHtml(order: Order, customer: Customer | null) {
     order.subTotal ??
     items.reduce((sum, item) => sum + (item.lineTotal ?? (item.unitPrice ?? 0) * item.quantity), 0);
   const total = order.totalAmount ?? Math.max(0, subTotal - order.discountAmount);
-  const customerName = customer?.fullName || order.customerName || `#${order.customerId}`;
+  // Customers may have no name (only phone is required); the Name line is then left out.
+  const customerName = customer?.fullName || order.customerName;
 
   const rows = items.length
     ? items
@@ -45,9 +46,18 @@ export function buildInvoiceHtml(order: Order, customer: Customer | null) {
         .join("")
     : `<tr><td colspan="5" class="empty">No items on this order.</td></tr>`;
 
-  const customerLines = [customer?.phone, customer?.address]
-    .filter(Boolean)
-    .map((line) => `<div class="muted">${escapeHtml(line!)}</div>`)
+  const customerLines = (
+    [
+      ["Name", customerName],
+      ["Phone", customer?.phone],
+      ["Address", customer?.address],
+    ] as const
+  )
+    .filter(([, value]) => value)
+    .map(
+      ([label, value]) =>
+        `<div class="field"><span class="muted">${label}:</span> <span${label === "Name" ? ' class="strong"' : ""}>${escapeHtml(value!)}</span></div>`
+    )
     .join("");
 
   return `<!doctype html>
@@ -72,13 +82,18 @@ export function buildInvoiceHtml(order: Order, customer: Customer | null) {
   header { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px;
     padding-bottom: 20px; border-bottom: 3px solid #036c5b; }
   .brand { display: flex; align-items: center; gap: 12px; }
-  .mark { width: 44px; height: 44px; border-radius: 12px; color: #fff; font: 34px/44px "Great Vibes", cursive;
-    text-align: center; background: linear-gradient(90deg, #06584c 0%, #036c5b 50%, #06a98c 100%); }
+  .mark { display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    width: 44px; height: 44px; border-radius: 12px; color: #fff; font: 34px/1 "Great Vibes", cursive;
+    background: linear-gradient(90deg, #06584c 0%, #036c5b 50%, #06a98c 100%); }
+  /* Great Vibes draws its glyphs high and to the right of the em box; same
+     optical nudge as the site's <Logo>. */
+  .mark span { display: block; transform: translate(-0.05em, 0.14em); }
   .shop { font-size: 20px; font-weight: 700; }
   h1 { margin: 0; font-size: 28px; letter-spacing: 0.08em; color: #036c5b; text-align: right; }
   .meta { margin-top: 4px; text-align: right; }
   .parties { display: flex; justify-content: space-between; gap: 24px; margin: 24px 0; }
   .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #6b7280; margin-bottom: 4px; }
+  .field { line-height: 1.7; }
   .status { display: inline-block; padding: 1px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
     background: #f3f4f6; color: #374151; }
   .status.paid { background: #dcfce7; color: #166534; }
@@ -101,7 +116,7 @@ export function buildInvoiceHtml(order: Order, customer: Customer | null) {
 <body>
   <header>
     <div class="brand">
-      <div class="mark">S</div>
+      <div class="mark"><span>S</span></div>
       <div class="shop">${SHOP_NAME}</div>
     </div>
     <div>
@@ -114,7 +129,6 @@ export function buildInvoiceHtml(order: Order, customer: Customer | null) {
   <section class="parties">
     <div>
       <div class="label">Bill to</div>
-      <div class="strong">${escapeHtml(customerName)}</div>
       ${customerLines}
     </div>
     <div style="text-align:right">
@@ -203,6 +217,7 @@ export function printInvoiceHtml(html: string, fileName: string) {
 // A4 at 96dpi; the capture padding stands in for the @page margin (16mm).
 const A4_WIDTH_PX = 794;
 const CAPTURE_PADDING_PX = 60;
+const CAPTURE_SCALE = 2;
 
 // Renders the invoice in an off-screen iframe, snapshots it and saves it as a PDF.
 // The browser draws the text before it becomes an image, so Khmer stays correct.
@@ -237,8 +252,16 @@ export async function downloadInvoicePdf(html: string, fileName: string) {
     }
     doc.body.style.padding = `${CAPTURE_PADDING_PX}px`;
 
+    // Where a page may end: under a table row or one of the closing blocks,
+    // so page breaks never cut through a line of text.
+    const bodyTop = doc.body.getBoundingClientRect().top;
+    const breakPoints = Array.from(
+      doc.querySelectorAll("thead, tbody tr, .totals, .note, footer"),
+      (el) => Math.round((el.getBoundingClientRect().bottom - bodyTop) * CAPTURE_SCALE)
+    ).sort((a, b) => a - b);
+
     const canvas = await html2canvas(doc.body, {
-      scale: 2,
+      scale: CAPTURE_SCALE,
       backgroundColor: "#ffffff",
       useCORS: true,
       windowWidth: A4_WIDTH_PX,
@@ -247,11 +270,23 @@ export async function downloadInvoicePdf(html: string, fileName: string) {
     const pdf = new jsPDF({ unit: "mm", format: "a4" });
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    // Canvas pixels that fit on one page at full page width.
-    const sliceHeight = Math.floor((canvas.width * pageHeight) / pageWidth);
+    // Canvas pixels per page at full page width, and the page margin in canvas pixels.
+    const pageHeightPx = Math.floor((canvas.width * pageHeight) / pageWidth);
+    const marginPx = CAPTURE_PADDING_PX * CAPTURE_SCALE;
 
-    for (let y = 0, page = 0; y < canvas.height; y += sliceHeight, page++) {
-      const height = Math.min(sliceHeight, canvas.height - y);
+    for (let y = 0, page = 0; y < canvas.height; page++) {
+      // The body padding gives page 1 its top margin; later pages start at a
+      // break point, so they get one added here. Every page keeps a bottom margin
+      // except the last, whose bottom padding is already in the capture.
+      const top = page === 0 ? 0 : marginPx;
+      let end = canvas.height;
+      if (canvas.height - y > pageHeightPx - top) {
+        const limit = y + pageHeightPx - top - marginPx;
+        const fit = breakPoints.filter((point) => point > y && point <= limit);
+        end = fit.length ? fit[fit.length - 1] : limit;
+      }
+
+      const height = end - y;
       const slice = document.createElement("canvas");
       slice.width = canvas.width;
       slice.height = height;
@@ -261,10 +296,11 @@ export async function downloadInvoicePdf(html: string, fileName: string) {
         slice.toDataURL("image/jpeg", 0.95),
         "JPEG",
         0,
-        0,
+        (top * pageWidth) / canvas.width,
         pageWidth,
         (height * pageWidth) / canvas.width
       );
+      y = end;
     }
 
     pdf.save(`${fileName}.pdf`);

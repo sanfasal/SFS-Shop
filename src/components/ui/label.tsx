@@ -3,7 +3,15 @@
 import * as React from "react"
 import { cn } from "cn"
 
-function Label({ className, ...props }: React.ComponentProps<"label">) {
+function Label({
+  className,
+  required = false,
+  children,
+  ...props
+}: React.ComponentProps<"label"> & {
+  /** Marks the field as required with a red star after the text. */
+  required?: boolean
+}) {
   return (
     <label
       data-slot="label"
@@ -12,7 +20,17 @@ function Label({ className, ...props }: React.ComponentProps<"label">) {
         className
       )}
       {...props}
-    />
+    >
+      {children}
+      {required && (
+        <>
+          <span aria-hidden className="-ml-1.5 text-destructive">
+            *
+          </span>
+          <span className="sr-only">(required)</span>
+        </>
+      )}
+    </label>
   )
 }
 
