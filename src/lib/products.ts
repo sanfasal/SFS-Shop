@@ -84,6 +84,20 @@ export async function deleteProduct(id: number): Promise<void> {
   await apiClient.delete("/api/Product/Delete", { params: { id } });
 }
 
+// What /api/ImageUpload accepts; checked before uploading so the user gets a
+// clear message instead of a rejected request.
+export const UPLOAD_MAX_BYTES = 1.5 * 1024 * 1024;
+export const UPLOAD_ACCEPT = "image/jpeg,image/png,image/heic,image/heif,.heic,.heif";
+// Some browsers report HEIC files with an empty type, so check the extension.
+const UPLOAD_ALLOWED = /\.(jpe?g|png|heic|heif)$/i;
+
+// Returns why a file can't be uploaded, or null when it's fine.
+export function uploadProblem(file: File): string | null {
+  if (!UPLOAD_ALLOWED.test(file.name)) return "Please choose a JPG, PNG or HEIC image.";
+  if (file.size > UPLOAD_MAX_BYTES) return "Image must be 1.5 MB or smaller.";
+  return null;
+}
+
 export async function uploadProductImage(file: File): Promise<string> {
   const body = new FormData();
   body.append("file", file);

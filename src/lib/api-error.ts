@@ -21,6 +21,9 @@ export function errorMessage(err: unknown, fallback: string) {
     if (err.response.status === 401 || err.response.status === 403) {
       return "You're not allowed to do this. Try logging in again.";
     }
+    if (err.response.status === 404) {
+      return `The API has no ${err.config?.method?.toUpperCase() ?? ""} ${err.config?.url ?? "endpoint"} — has it been added to the backend?`;
+    }
   } else if (err instanceof Error) {
     return err.message;
   }

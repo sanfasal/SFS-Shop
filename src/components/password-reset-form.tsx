@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
 import { errorMessage } from "@/lib/api-error";
 import { forgotPassword, resetPassword } from "@/lib/auth";
+import { PASSWORD_HINT, passwordProblem } from "@/lib/password";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const RESEND_SECONDS = 60;
@@ -29,11 +30,15 @@ type Errors = {
 // password. `onDone` receives the email so sign-in can be prefilled.
 export function PasswordResetForm({
   initialEmail = "",
+  backLabel = "Back to sign in",
+  successMessage = "Password reset. Sign in with your new password.",
   onStepChange,
   onBack,
   onDone,
 }: {
   initialEmail?: string;
+  backLabel?: string;
+  successMessage?: string;
   onStepChange?: (step: "request" | "reset") => void;
   onBack: () => void;
   onDone: (email: string) => void;
@@ -97,9 +102,8 @@ export function PasswordResetForm({
     event.preventDefault();
     const next: Errors = {};
     if (!/^\d{6}$/.test(otp)) next.otp = "Enter the 6-digit code from your email.";
-    if (!password) next.password = "New password is required.";
-    else if (password.length < 6) next.password = "Password must be at least 6 characters.";
-    else if (password.length > 100) next.password = "Password must be 100 characters or fewer.";
+    const problem = passwordProblem(password);
+    if (problem) next.password = problem;
     if (password && password !== confirmPassword) next.confirmPassword = "Passwords don't match.";
     setErrors(next);
     if (Object.keys(next).length > 0) return;
@@ -107,7 +111,7 @@ export function PasswordResetForm({
     setSubmitting(true);
     try {
       await resetPassword({ email: email.trim(), otp, newPassword: password, confirmPassword });
-      toast.success("Password reset. Sign in with your new password.");
+      toast.success(successMessage);
       onDone(email.trim());
     } catch (err) {
       const message = errorMessage(err, "Couldn't reset your password.");
@@ -127,7 +131,7 @@ export function PasswordResetForm({
       disabled={submitting}
     >
       <ArrowLeft className="size-4" />
-      {step === "reset" ? "Use a different email" : "Back to sign in"}
+      {step === "reset" ? "Use a different email" : backLabel}
     </Button>
   );
 
@@ -217,12 +221,16 @@ export function PasswordResetForm({
         <Label htmlFor="reset-password" className="sr-only">
           New password
         </Label>
+        <p id="reset-password-hint" className="text-xs text-muted-foreground">
+          {PASSWORD_HINT}
+        </p>
         <div className="relative">
           <Lock className={iconClass} aria-hidden />
           <PasswordInput
             id="reset-password"
             autoComplete="new-password"
-            placeholder="New password (at least 6 characters)"
+            placeholder="New password"
+            aria-describedby="reset-password-hint"
             className={inputClass}
             value={password}
             onChange={(e) => setPassword(e.target.value)}

@@ -7,6 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductImage } from "@/components/product-image";
 import { useAuth } from "@/components/auth-provider";
+import { useDocumentTitle, useLanguage } from "@/lib/i18n";
 import { fetchProductById, type Product } from "@/lib/products";
 
 const currency = new Intl.NumberFormat("en-US", {
@@ -16,6 +17,7 @@ const currency = new Intl.NumberFormat("en-US", {
 
 export default function ProductDetailPage() {
   const { isAuthenticated } = useAuth();
+  const { t } = useLanguage();
   const params = useParams<{ id: string }>();
   const id = Number(params.id);
 
@@ -23,7 +25,7 @@ export default function ProductDetailPage() {
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
     if (invalidId) return;
@@ -31,14 +33,14 @@ export default function ProductDetailPage() {
     let ignore = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetching effect; kicks off an async request right after, not a synchronous derived-state computation
     setLoading(true);
-    setFetchError(null);
+    setFetchError(false);
 
     fetchProductById(id)
       .then((result) => {
         if (!ignore) setProduct(result);
       })
       .catch(() => {
-        if (!ignore) setFetchError("Couldn't load this product. Is the API running?");
+        if (!ignore) setFetchError(true);
       })
       .finally(() => {
         if (!ignore) setLoading(false);
@@ -49,7 +51,10 @@ export default function ProductDetailPage() {
     };
   }, [id, invalidId]);
 
-  const error = invalidId ? "Invalid product." : fetchError;
+  const error = invalidId ? t("invalidProduct") : fetchError ? t("productLoadError") : null;
+
+  // Product names come from the API untranslated; fall back to "Products" while loading.
+  useDocumentTitle(product?.productName ?? t("products"));
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-10">
@@ -61,13 +66,13 @@ export default function ProductDetailPage() {
         render={<Link href="/" />}
       >
         <ArrowLeft className="size-4" />
-        Back to products
+        {t("backToProducts")}
       </Button>
 
       {error ? (
         <p className="text-sm text-destructive">{error}</p>
       ) : loading ? (
-        <p className="text-muted-foreground">Loading product...</p>
+        <p className="text-muted-foreground">{t("loadingProduct")}</p>
       ) : product ? (
         <div className="flex flex-col gap-4">
           <ProductImage
@@ -83,14 +88,14 @@ export default function ProductDetailPage() {
             </p>
           </div>
           <p className="text-foreground">
-            {product.description || "No description."}
+            {product.description || t("noDescription")}
           </p>
           <div className="flex items-baseline justify-between border-t pt-4">
             <p className="text-2xl font-semibold">
               {currency.format(product.price)}
             </p>
             {isAuthenticated && (
-              <p className="text-sm text-muted-foreground">Qty: {product.quantity}</p>
+              <p className="text-sm text-muted-foreground">{t("quantity")}: {product.quantity}</p>
             )}
           </div>
         </div>

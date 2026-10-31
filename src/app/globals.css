@@ -162,3 +162,41 @@
 @utility bg-brand-gradient {
   background-image: var(--brand-gradient);
 }
+
+/* A diagonal streak of light that sweeps across the element every few
+   seconds, e.g. the price tag on product cards. The element needs
+   position: relative/absolute; the streak is clipped to its rounded shape. */
+@utility flare {
+  overflow: hidden;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      105deg,
+      transparent 20%,
+      rgb(255 255 255 / 0.9) 50%,
+      transparent 80%
+    );
+    transform: translateX(-120%);
+    animation: flare 6s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &::after {
+      animation: none;
+      opacity: 0;
+    }
+  }
+}
+
+/* The sweep takes the first ~40% of each cycle; the rest is a pause. */
+@keyframes flare {
+  0% {
+    transform: translateX(-120%);
+  }
+  40%,
+  100% {
+    transform: translateX(120%);
+  }
+}

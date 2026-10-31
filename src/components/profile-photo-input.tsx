@@ -1,15 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { isAxiosError } from "axios";
 import { Loader2, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { uploadProductImage } from "@/lib/products";
-
-const MAX_FILE_BYTES = 1.5 * 1024 * 1024;
-const ACCEPT = "image/jpeg,image/png,image/heic,image/heif,.heic,.heif";
-// Some browsers report HEIC files with an empty type, so also check the extension.
-const ALLOWED = /\.(jpe?g|png|heic|heif)$/i;
+import { errorMessage } from "@/lib/api-error";
+import { UPLOAD_ACCEPT, uploadProblem, uploadProductImage } from "@/lib/products";
 
 // Round avatar preview with Upload / Remove buttons. `value` is the photo URL.
 export function ProfilePhotoInput({
@@ -39,12 +34,9 @@ export function ProfilePhotoInput({
     if (inputRef.current) inputRef.current.value = "";
     if (!file) return;
 
-    if (!ALLOWED.test(file.name)) {
-      setError("Please choose a JPG, PNG or HEIC image.");
-      return;
-    }
-    if (file.size > MAX_FILE_BYTES) {
-      setError("Image must be 1.5 MB or smaller.");
+    const problem = uploadProblem(file);
+    if (problem) {
+      setError(problem);
       return;
     }
 
@@ -55,8 +47,7 @@ export function ProfilePhotoInput({
     try {
       onChange(await uploadProductImage(file));
     } catch (err) {
-      const message = isAxiosError(err) ? err.response?.data?.error : null;
-      setError(message ?? "Upload failed. Please try again.");
+      setError(errorMessage(err, "Upload failed. Please try again."));
     } finally {
       setLocalPreview((url) => {
         if (url) URL.revokeObjectURL(url);
@@ -120,7 +111,7 @@ export function ProfilePhotoInput({
       <input
         ref={inputRef}
         type="file"
-        accept={ACCEPT}
+        accept={UPLOAD_ACCEPT}
         className="hidden"
         onChange={(e) => handleFile(e.target.files?.[0])}
       />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 
 export const LANGUAGES = {
   km: "ខ្មែរ",
@@ -20,12 +20,48 @@ const messages = {
     outOfStock: "អស់ពីស្តុក",
     code: "លេខកូដ",
     viewDetails: "មើលលម្អិត",
+    products: "ផលិតផល",
+    searchProducts: "ស្វែងរកផលិតផល...",
+    all: "ទាំងអស់",
+    createOrder: "បង្កើតការបញ្ជាទិញ",
+    addProduct: "បន្ថែមផលិតផល",
+    loadingProducts: "កំពុងផ្ទុកផលិតផល...",
+    noProducts: "រកមិនឃើញផលិតផលទេ។",
+    retry: "ព្យាយាមម្តងទៀត",
+    previousPage: "ទំព័រមុន",
+    nextPage: "ទំព័របន្ទាប់",
+    pageOf: "ទំព័រ {page} នៃ {total}",
+    backToProducts: "ត្រឡប់ទៅផលិតផល",
+    loadingProduct: "កំពុងផ្ទុកផលិតផល...",
+    productLoadError: "មិនអាចផ្ទុកផលិតផលនេះបានទេ។",
+    invalidProduct: "ផលិតផលមិនត្រឹមត្រូវ។",
+    noDescription: "គ្មានការពិពណ៌នា។",
+    quantity: "ចំនួន",
+    changeLanguage: "ប្តូរភាសា",
   },
   en: {
     price: "Price",
     outOfStock: "Out of stock",
     code: "Code",
     viewDetails: "View details",
+    products: "Products",
+    searchProducts: "Search products...",
+    all: "All",
+    createOrder: "Create order",
+    addProduct: "Add product",
+    loadingProducts: "Loading products...",
+    noProducts: "No products found.",
+    retry: "Retry",
+    previousPage: "Previous page",
+    nextPage: "Next page",
+    pageOf: "Page {page} of {total}",
+    backToProducts: "Back to products",
+    loadingProduct: "Loading product...",
+    productLoadError: "Couldn't load this product. Is the API running?",
+    invalidProduct: "Invalid product.",
+    noDescription: "No description.",
+    quantity: "Qty",
+    changeLanguage: "Change language",
   },
 } satisfies Record<Language, Record<string, string>>;
 
@@ -65,6 +101,24 @@ export function setLanguage(language: Language) {
 
 export function useLanguage() {
   const language = useSyncExternalStore(subscribe, getSnapshot, () => DEFAULT_LANGUAGE);
-  const t = (key: MessageKey) => messages[language][key];
+  // Placeholders like {page} are filled from vars.
+  const t = (key: MessageKey, vars?: Record<string, string | number>) =>
+    messages[language][key].replace(/\{(\w+)\}/g, (match, name: string) =>
+      vars && name in vars ? String(vars[name]) : match
+    );
   return { language, setLanguage, t };
+}
+
+const SITE_NAME = "sfs-shop";
+
+/**
+ * Keeps the browser tab title and <html lang> in step with the chosen language.
+ * The static metadata title can't do this since the language lives in localStorage.
+ */
+export function useDocumentTitle(title?: string) {
+  const { language } = useLanguage();
+  useEffect(() => {
+    document.documentElement.lang = language;
+    document.title = title ? `${title} · ${SITE_NAME}` : SITE_NAME;
+  }, [language, title]);
 }

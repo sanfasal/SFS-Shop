@@ -221,7 +221,7 @@ export default function CustomersPage() {
         open={deleting !== null}
         onOpenChange={(open) => !open && setDeleting(null)}
         title={`Delete ${deleting ? customerLabel(deleting) : "customer"}?`}
-        description="This permanently removes the customer."
+        description="This permanently removes the customer. Customers with orders can't be deleted. Deactivate them instead."
         successMessage="Customer deleted"
         onConfirm={async () => {
           if (!deleting) return;

@@ -19,22 +19,23 @@ import { useAuth } from "@/components/auth-provider";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { ProfilePhotoInput } from "@/components/profile-photo-input";
+import { ChangeEmailForm } from "@/components/change-email-form";
+import { PasswordResetForm } from "@/components/password-reset-form";
 import { Badge } from "@/components/ui/badge";
 import { errorMessage } from "@/lib/api-error";
 import { changePassword } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
+import { PASSWORD_HINT, passwordProblem } from "@/lib/password";
 import { fetchCurrentUser, updateUser, type User } from "@/lib/users";
 
 type ProfileValues = {
   fullName: string;
-  email: string;
   // Profile photo URL ("" for none).
   photo: string;
 };
 
 type ProfileErrors = {
   fullName?: string;
-  email?: string;
   form?: string;
 };
 
@@ -58,14 +59,6 @@ function validateProfile(values: ProfileValues): ProfileErrors {
     errors.fullName = "Full name must be 150 characters or fewer.";
   }
 
-  if (!values.email.trim()) {
-    errors.email = "Email is required.";
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) {
-    errors.email = "Enter a valid email address.";
-  } else if (values.email.length > 150) {
-    errors.email = "Email must be 150 characters or fewer.";
-  }
-
   return errors;
 }
 
@@ -76,13 +69,8 @@ function validatePassword(values: PasswordValues): PasswordErrors {
     errors.currentPassword = "Enter your current password.";
   }
 
-  if (!values.password) {
-    errors.password = "Password is required.";
-  } else if (values.password.length < 6) {
-    errors.password = "Password must be at least 6 characters.";
-  } else if (values.password.length > 100) {
-    errors.password = "Password must be 100 characters or fewer.";
-  }
+  const problem = passwordProblem(values.password);
+  if (problem) errors.password = problem;
 
   if (!errors.password && values.password === values.currentPassword) {
     errors.password = "New password must be different from your current one.";
@@ -102,7 +90,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [profile, setProfile] = useState<ProfileValues>({ fullName: "", email: "", photo: "" });
+  const [profile, setProfile] = useState<ProfileValues>({ fullName: "", photo: "" });
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [profileErrors, setProfileErrors] = useState<ProfileErrors>({});
   const [savingProfile, setSavingProfile] = useState(false);
@@ -114,6 +102,14 @@ export default function SettingsPage() {
   });
   const [passwordErrors, setPasswordErrors] = useState<PasswordErrors>({});
   const [savingPassword, setSavingPassword] = useState(false);
+  // Swaps the password form for the emailed-code reset flow.
+  const [resettingPassword, setResettingPassword] = useState(false);
+
+  function showPasswordReset(show: boolean) {
+    setPasswords({ currentPassword: "", password: "", confirmPassword: "" });
+    setPasswordErrors({});
+    setResettingPassword(show);
+  }
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -127,7 +123,7 @@ export default function SettingsPage() {
       .then((result) => {
         if (ignore) return;
         setUser(result);
-        setProfile({ fullName: result.fullName ?? "", email: result.email, photo: result.profile ?? "" });
+        setProfile({ fullName: result.fullName ?? "", photo: result.profile ?? "" });
       })
       .catch((err) => {
         if (!ignore) {
@@ -156,7 +152,6 @@ export default function SettingsPage() {
     setProfileErrors(validationErrors);
     if (Object.keys(validationErrors).length > 0) return;
 
-    const email = profile.email.trim();
     const fullName = profile.fullName.trim() || null;
     const photo = profile.photo || null;
 
@@ -164,14 +159,14 @@ export default function SettingsPage() {
     try {
       await updateUser(user.id, {
         fullName,
-        email,
+        // Email changes go through the verified flow on the Email tab.
+        email: user.email,
         roleId: user.roleId,
         isActive: user.isActive,
         password: null,
         profile: photo,
       });
-      setUser({ ...user, fullName, email, profile: photo });
-      setAuthEmail(email);
+      setUser({ ...user, fullName, profile: photo });
       toast.success("Profile updated.");
     } catch (err) {
       setProfileErrors({ form: errorMessage(err, "Couldn't save your changes.") });
@@ -240,6 +235,7 @@ export default function SettingsPage() {
         <Tabs defaultValue="profile" className="gap-4">
           <TabsList>
             <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="email">Email</TabsTrigger>
             <TabsTrigger value="password">Password</TabsTrigger>
           </TabsList>
 
@@ -312,24 +308,11 @@ export default function SettingsPage() {
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="email" required>Email</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      autoComplete="email"
-                      value={profile.email}
-                      onChange={(e) =>
-                        setProfile((prev) => ({ ...prev, email: e.target.value }))
-                      }
-                      aria-invalid={Boolean(profileErrors.email)}
-                      aria-describedby={profileErrors.email ? "email-error" : undefined}
-                    />
-                    {profileErrors.email && (
-                      <p id="email-error" className="text-sm text-destructive">
-                        {profileErrors.email}
-                      </p>
-                    )}
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" value={user.email} disabled readOnly />
+                    <p className="text-xs text-muted-foreground">
+                      Change it on the Email tab — we&apos;ll send a code to confirm the new address.
+                    </p>
                   </div>
 
                   {profileErrors.form && (
@@ -348,20 +331,64 @@ export default function SettingsPage() {
             </Card>
           </TabsContent>
 
+          <TabsContent value="email">
+            <Card>
+              <CardHeader>
+                <CardTitle>Email</CardTitle>
+                <CardDescription>
+                  Enter a new email and confirm it with the 6-digit code we send there.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ChangeEmailForm
+                  currentEmail={user.email}
+                  onChanged={(email) => {
+                    setUser({ ...user, email });
+                    setAuthEmail(email);
+                  }}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="password">
             <Card>
               <CardHeader>
-                <CardTitle>Password</CardTitle>
-                <CardDescription>Enter your current password, then choose a new one.</CardDescription>
+                <CardTitle>{resettingPassword ? "Reset password" : "Password"}</CardTitle>
+                <CardDescription>
+                  {resettingPassword
+                    ? "We'll email you a 6-digit code to set a new password."
+                    : "Enter your current password, then choose a new one."}
+                </CardDescription>
               </CardHeader>
               <CardContent>
+                {resettingPassword ? (
+                  <PasswordResetForm
+                    initialEmail={user.email}
+                    backLabel="Back to change password"
+                    successMessage="Password reset."
+                    onBack={() => showPasswordReset(false)}
+                    onDone={() => showPasswordReset(false)}
+                  />
+                ) : (
                 <form
                   onSubmit={handlePasswordSubmit}
                   noValidate
                   className="flex flex-col gap-5"
                 >
                   <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="currentPassword" required>Current password</Label>
+                    <div className="flex items-center justify-between gap-2">
+                      <Label htmlFor="currentPassword" required>Current password</Label>
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 text-xs"
+                        onClick={() => showPasswordReset(true)}
+                      >
+                        Forgot password?
+                      </Button>
+                    </div>
                     <PasswordInput
                       id="currentPassword"
                       placeholder="Enter your current password"
@@ -385,9 +412,12 @@ export default function SettingsPage() {
 
                   <div className="flex flex-col gap-1.5">
                     <Label htmlFor="password" required>New password</Label>
+                    <p id="password-hint" className="text-xs text-muted-foreground">
+                      {PASSWORD_HINT}
+                    </p>
                     <PasswordInput
                       id="password"
-                      placeholder="At least 6 characters"
+                      placeholder="Choose a strong password"
                       name="password"
                       autoComplete="new-password"
                       value={passwords.password}
@@ -396,7 +426,7 @@ export default function SettingsPage() {
                       }
                       aria-invalid={Boolean(passwordErrors.password)}
                       aria-describedby={
-                        passwordErrors.password ? "password-error" : undefined
+                        passwordErrors.password ? "password-hint password-error" : "password-hint"
                       }
                     />
                     {passwordErrors.password && (
@@ -445,6 +475,7 @@ export default function SettingsPage() {
                     {savingPassword ? "Saving..." : "Change password"}
                   </Button>
                 </form>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

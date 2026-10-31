@@ -4,9 +4,9 @@ import { useRef, useState, type ClipboardEvent, type DragEvent } from "react";
 import { isAxiosError } from "axios";
 import { ImageOff, Loader2, Upload, X } from "lucide-react";
 import { cn } from "cn";
-import { uploadProductImage } from "@/lib/products";
+import { errorMessage } from "@/lib/api-error";
+import { UPLOAD_ACCEPT, uploadProblem, uploadProductImage } from "@/lib/products";
 
-const MAX_FILE_BYTES = 2 * 1024 * 1024;
 const MAX_URL_LENGTH = 500;
 
 type ImageInputProps = {
@@ -35,12 +35,10 @@ export function ImageInput({ value, onChange, onUploadingChange }: ImageInputPro
     const file = files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
-      setError("Please choose an image file.");
-      return;
-    }
-    if (file.size > MAX_FILE_BYTES) {
-      setError("Image must be smaller than 2 MB.");
+    const problem = uploadProblem(file);
+    if (problem) {
+      setError(problem);
+      if (inputRef.current) inputRef.current.value = "";
       return;
     }
 
@@ -60,8 +58,7 @@ export function ImageInput({ value, onChange, onUploadingChange }: ImageInputPro
       if (isAxiosError(err) && err.response?.status === 404) {
         setError("The API doesn't support file uploads yet. Paste an image URL instead.");
       } else {
-        const message = isAxiosError(err) ? err.response?.data?.error : null;
-        setError(message ?? "Upload failed. Please try again.");
+        setError(errorMessage(err, "Upload failed. Please try again."));
       }
     } finally {
       setLocalPreview(null);
@@ -211,7 +208,7 @@ export function ImageInput({ value, onChange, onUploadingChange }: ImageInputPro
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept={UPLOAD_ACCEPT}
         className="hidden"
         onChange={(e) => handleFiles(e.target.files)}
       />

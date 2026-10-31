@@ -33,8 +33,9 @@ export function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
       </Link>
 
       {/* Price tag tucked into the top-left corner: square against the card's
-          edges (the card clips it to its own rounded corner), rounded inside. */}
-      <span className="pointer-events-none absolute top-0 left-0 rounded-br-2xl bg-red-500 px-3.5 py-1.5 text-sm font-bold text-white shadow-md">
+          edges (the card clips it to its own rounded corner), rounded inside.
+          A light flare sweeps across it every few seconds. */}
+      <span className="flare pointer-events-none absolute top-0 left-0 rounded-br-2xl bg-red-500 px-3.5 py-1.5 text-sm font-bold text-white shadow-md">
         {t("price")} {currency.format(product.price)}
       </span>
 

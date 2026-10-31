@@ -1,7 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, LayoutGrid, Plus, Search, ShoppingCart } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Flashlight,
+  LayoutGrid,
+  Plus,
+  Search,
+  Shield,
+  ShoppingCart,
+  Tag,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,11 +25,11 @@ import { ProductCard } from "@/components/product-card";
 import { ProductFormDialog } from "@/components/product-form-dialog";
 import { useApiData } from "@/hooks/use-api-data";
 import { useProducts } from "@/hooks/use-products";
+import { useDocumentTitle, useLanguage } from "@/lib/i18n";
 import { fetchCategories } from "@/lib/categories";
 import {
   createProduct,
   deleteProduct,
-  getProductImage,
   updateProduct,
   type Product,
   type ProductUpdateInput,
@@ -29,7 +41,7 @@ const FETCH_SIZE = 100;
 const PAGE_SIZE = 12;
 const ALL_CATEGORIES = "all";
 
-// Category tabs: round thumbnail on top, name underneath. The active tab's
+// Category tabs: round icon tile on top, name underneath. The active tab's
 // colors are marked important so the base tab styles and hover can't override them.
 // The base underline (::after) sits 5px below the tab and would make the
 // scrollable list overflow vertically, so it's hidden here.
@@ -39,12 +51,28 @@ const categoryTabClass =
 const categoryThumbClass =
   "flex size-16 items-center justify-center overflow-hidden rounded-full bg-muted ring-2 ring-transparent ring-offset-2 ring-offset-background transition-shadow group-hover/cat:ring-primary/40 group-data-active/cat:ring-primary";
 
-const categoryImageClass =
-  "size-full object-cover transition-transform duration-300 group-hover/cat:scale-110 motion-reduce:transition-none";
+const categoryIconClass =
+  "size-7! text-primary transition-transform duration-300 group-hover/cat:scale-110 motion-reduce:transition-none";
+
+// Categories have no icon of their own, so pick one from keywords in the name
+// (Khmer or English). More specific keywords come first: a stun flashlight
+// (ពិលឆក់) should get the bolt, not the plain flashlight.
+const CATEGORY_ICONS: [keywords: string[], icon: LucideIcon][] = [
+  [["ឆក់", "stun", "shock", "taser"], Zap],
+  [["ពិល", "flashlight", "torch", "light"], Flashlight],
+  [["ដំបង", "baton", "stick"], Shield],
+];
+
+function getCategoryIcon(name: string): LucideIcon {
+  const lower = name.toLowerCase();
+  return CATEGORY_ICONS.find(([keywords]) => keywords.some((k) => lower.includes(k)))?.[1] ?? Tag;
+}
 
 export function ProductGrid() {
   // Logged-in admins can manage the catalog right from the shop.
   const { isAuthenticated: manage } = useAuth();
+  const { t } = useLanguage();
+  useDocumentTitle(t("products"));
 
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -90,23 +118,12 @@ export function ProductGrid() {
     await refetch();
   }
 
-  // Categories have no image of their own, so each tab shows a photo from one
-  // of its products (the first one that has a photo), or a letter tile if none do.
   const categories = useMemo(() => {
-    const byId = new Map<number, { id: number; name: string; image: string | null }>();
+    const byId = new Map<number, { id: number; name: string }>();
     for (const product of allProducts) {
-      const entry = byId.get(product.categoryId) ?? {
-        id: product.categoryId,
-        name: product.categoryName,
-        image: null,
-      };
-      entry.image ??= product.imageUrl || null;
-      byId.set(product.categoryId, entry);
+      byId.set(product.categoryId, { id: product.categoryId, name: product.categoryName });
     }
-    return Array.from(byId.values(), (c) => ({
-      ...c,
-      image: c.image ?? getProductImage({ productName: c.name, imageUrl: null }),
-    })).sort((a, b) => a.name.localeCompare(b.name));
+    return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [allProducts]);
 
   const filteredProducts =
@@ -119,24 +136,24 @@ export function ProductGrid() {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 sm:py-10">
-      <h1 className="sr-only">Products</h1>
+      <h1 className="sr-only">{t("products")}</h1>
       {/* Stacked on small screens; on wide screens categories sit left of the toolbar. */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex w-full items-center gap-2 sm:justify-end lg:w-auto lg:flex-none">
           <div className="relative flex-1 sm:w-72 sm:flex-none">
             <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search products..."
-              aria-label="Search products"
+              placeholder={t("searchProducts")}
+              aria-label={t("searchProducts")}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="h-9 rounded-full pl-9"
             />
           </div>
           {manage && (
-            <Button variant="outline" aria-label="Create order" onClick={() => setOrderOpen(true)}>
+            <Button variant="outline" aria-label={t("createOrder")} onClick={() => setOrderOpen(true)}>
               <ShoppingCart />
-              <span className="hidden sm:inline">Create order</span>
+              <span className="hidden sm:inline">{t("createOrder")}</span>
             </Button>
           )}
           {manage && (
@@ -147,7 +164,7 @@ export function ProductGrid() {
               }}
             >
               <Plus />
-              Add product
+              {t("addProduct")}
             </Button>
           )}
         </div>
@@ -162,27 +179,21 @@ export function ProductGrid() {
           <TabsList className="h-auto w-full flex-nowrap justify-start gap-2 overflow-x-auto bg-transparent p-1 group-data-horizontal/tabs:h-auto sm:flex-wrap">
             <TabsTrigger value={ALL_CATEGORIES} className={categoryTabClass}>
               <span className={categoryThumbClass}>
-                <LayoutGrid className="size-6! text-primary" />
+                <LayoutGrid className={categoryIconClass} />
               </span>
-              <span className="line-clamp-2 w-full text-center leading-normal">All</span>
+              <span className="line-clamp-2 w-full text-center leading-normal">{t("all")}</span>
             </TabsTrigger>
-            {categories.map((c) => (
-              <TabsTrigger key={c.id} value={String(c.id)} className={categoryTabClass}>
-                <span className={categoryThumbClass}>
-                  {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary user-provided URLs or a generated data: URI */}
-                  <img
-                    src={c.image}
-                    alt=""
-                    className={categoryImageClass}
-                    // Broken photo URL: fall back to the letter tile.
-                    onError={(e) => {
-                      e.currentTarget.src = getProductImage({ productName: c.name, imageUrl: null });
-                    }}
-                  />
-                </span>
-                <span className="line-clamp-2 w-full text-center leading-normal">{c.name}</span>
-              </TabsTrigger>
-            ))}
+            {categories.map((c) => {
+              const Icon = getCategoryIcon(c.name);
+              return (
+                <TabsTrigger key={c.id} value={String(c.id)} className={categoryTabClass}>
+                  <span className={categoryThumbClass}>
+                    <Icon className={categoryIconClass} />
+                  </span>
+                  <span className="line-clamp-2 w-full text-center leading-normal">{c.name}</span>
+                </TabsTrigger>
+              );
+            })}
           </TabsList>
         </Tabs>
       </div>
@@ -191,13 +202,13 @@ export function ProductGrid() {
         <div className="flex flex-col items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4">
           <p className="text-sm text-destructive">{error}</p>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
-            Retry
+            {t("retry")}
           </Button>
         </div>
       ) : loading && allProducts.length === 0 ? (
-        <p className="text-muted-foreground">Loading products...</p>
+        <p className="text-muted-foreground">{t("loadingProducts")}</p>
       ) : products.length === 0 ? (
-        <p className="text-muted-foreground">No products found.</p>
+        <p className="text-muted-foreground">{t("noProducts")}</p>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
           {products.map((product) => (
@@ -225,19 +236,19 @@ export function ProductGrid() {
             size="icon"
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            aria-label="Previous page"
+            aria-label={t("previousPage")}
           >
             <ChevronLeft className="size-4" />
           </Button>
           <span className="text-sm text-muted-foreground">
-            Page {page} of {totalPages}
+            {t("pageOf", { page, total: totalPages })}
           </span>
           <Button
             variant="outline"
             size="icon"
             disabled={page >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            aria-label="Next page"
+            aria-label={t("nextPage")}
           >
             <ChevronRight className="size-4" />
           </Button>

@@ -12,13 +12,13 @@ import {
 import { LANGUAGES, useLanguage, type Language } from "@/lib/i18n";
 
 export function LanguageToggle() {
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button variant="ghost" size="icon" aria-label="Change language" title="Change language" />
+          <Button variant="ghost" size="icon" aria-label={t("changeLanguage")} title={t("changeLanguage")} />
         }
       >
         <Languages className="size-5" />

@@ -54,3 +54,13 @@ export type ResetPasswordInput = {
 export async function resetPassword(input: ResetPasswordInput): Promise<void> {
   await apiClient.post("/api/Auth/ResetPassword", input);
 }
+
+// Emails a 6-digit code to the new address; the API rejects an address already in use.
+export async function requestEmailChange(newEmail: string): Promise<void> {
+  await apiClient.post("/api/Auth/RequestEmailChange", { newEmail });
+}
+
+// Saves the new email on the signed-in user once the emailed code checks out.
+export async function confirmEmailChange(newEmail: string, otp: string): Promise<void> {
+  await apiClient.post("/api/Auth/ConfirmEmailChange", { newEmail, otp });
+}

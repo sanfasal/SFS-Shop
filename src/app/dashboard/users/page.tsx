@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
+import { PASSWORD_HINT, passwordProblem } from "@/lib/password";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
@@ -358,7 +359,10 @@ function UserForm({
     if (!user && !username.trim()) return "Username is required.";
     if (!EMAIL_PATTERN.test(email.trim())) return "Enter a valid email address.";
     if (!roleId) return "Choose a role.";
-    if (!user && password.length < 6) return "Password must be at least 6 characters.";
+    if (!user) {
+      const problem = passwordProblem(password);
+      if (problem) return problem;
+    }
     return null;
   }
 
@@ -467,10 +471,14 @@ function UserForm({
       {!user && (
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="user-password" required>Password</Label>
+          <p id="user-password-hint" className="text-xs text-muted-foreground">
+            {PASSWORD_HINT}
+          </p>
           <PasswordInput
             id="user-password"
-            placeholder="At least 6 characters"
+            placeholder="Choose a strong password"
             autoComplete="new-password"
+            aria-describedby="user-password-hint"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
